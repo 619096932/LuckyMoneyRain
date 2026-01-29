@@ -60,7 +60,7 @@
 ![运行记录](Imgs/chrome-capture-2026-01-29.webp)
 
 ## 高并发真实压测脚本
-脚本路径：`/Users/lichen/年会红包雨/scripts/simulate_clients.py`（相对路径 `scripts/simulate_clients.py`）。  
+脚本路径：`scripts/simulate_clients.py`（相对路径 `scripts/simulate_clients.py`）。  
 用途：模拟真实用户的远程注册、WebSocket 连接、轮次轮询与点击行为，用于高并发真实压测。
 
 ### 调用方式
