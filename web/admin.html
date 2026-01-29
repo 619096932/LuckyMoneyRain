@@ -1,0 +1,2930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>红包雨 · 管理控制台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1118;
+      --panel: #111827;
+      --panel-2: #0f172a;
+      --border: rgba(148, 163, 184, 0.15);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #f4d35e;
+      --accent-2: #37e2c9;
+      --danger: #ff6b6b;
+      --success: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 60%),
+        radial-gradient(circle at 20% 20%, rgba(244, 211, 94, 0.2), transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+    }
+
+    .chip.ok {
+      border-color: rgba(74, 222, 128, 0.3);
+      color: var(--success);
+    }
+
+    .chip.warn {
+      border-color: rgba(248, 113, 113, 0.4);
+      color: var(--danger);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.stats {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .grid.split {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .grid.main {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    @media (max-width: 960px) {
+      .grid.main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: linear-gradient(160deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.95));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0.3px;
+      color: #f8fafc;
+    }
+
+    .card .meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 600;
+      margin: 8px 0 4px;
+    }
+
+    .stat-sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .btn {
+      border: none;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.2s ease;
+    }
+
+    .btn:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(244, 211, 94, 0.95), rgba(243, 132, 34, 0.9));
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .btn.secondary {
+      background: linear-gradient(135deg, rgba(55, 226, 201, 0.85), rgba(59, 130, 246, 0.8));
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    .btn.danger {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fecaca;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    details {
+      margin-top: 12px;
+      border: 1px dashed rgba(148, 163, 184, 0.2);
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .list-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .progress {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.15);
+      overflow: hidden;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(55, 226, 201, 0.9), rgba(244, 211, 94, 0.9));
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .pill.ok {
+      border-color: rgba(74, 222, 128, 0.35);
+      color: var(--success);
+    }
+
+    .pill.warn {
+      border-color: rgba(244, 211, 94, 0.4);
+      color: var(--accent);
+    }
+
+    .pill.danger {
+      border-color: rgba(248, 113, 113, 0.45);
+      color: var(--danger);
+    }
+
+    .result-box {
+      width: 100%;
+      min-height: 120px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.7);
+      color: var(--text);
+      padding: 10px;
+      font-size: 12px;
+      font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.9);
+      z-index: 99;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal .card {
+      width: min(560px, 90vw);
+    }
+
+    canvas {
+      width: 100%;
+      height: 110px;
+    }
+
+    .tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.75);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.2s ease, background 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(55, 226, 201, 0.85), rgba(244, 211, 94, 0.9));
+      color: #0f172a;
+      font-weight: 600;
+      border-color: transparent;
+    }
+
+    .tab-panel {
+      display: none;
+      animation: tabFade 0.35s ease;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes tabFade {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .switch input {
+      appearance: none;
+      width: 42px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.2);
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.2s ease;
+    }
+
+    .switch input::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #f8fafc;
+      transition: transform 0.2s ease;
+    }
+
+    .switch input:checked {
+      background: rgba(74, 222, 128, 0.6);
+    }
+
+    .switch input:checked::after {
+      transform: translateX(20px);
+    }
+
+    .user-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: rgba(148, 163, 184, 0.25);
+      color: #0f172a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .avatar.large {
+      width: 42px;
+      height: 42px;
+      font-size: 16px;
+    }
+
+    .avatar.mini {
+      width: 22px;
+      height: 22px;
+      font-size: 10px;
+    }
+
+    .avatar.fallback {
+      background: linear-gradient(135deg, hsl(var(--avatar-hue, 200), 70%, 70%), hsl(calc(var(--avatar-hue, 200) + 30), 65%, 45%));
+      color: #0b1020;
+    }
+
+    .status-tag {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .status-tag.ok {
+      border-color: rgba(74, 222, 128, 0.35);
+      color: var(--success);
+    }
+
+    .status-tag.warn {
+      border-color: rgba(244, 211, 94, 0.4);
+      color: var(--accent);
+    }
+
+    .status-tag.danger {
+      border-color: rgba(248, 113, 113, 0.45);
+      color: var(--danger);
+    }
+
+    .flow-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      font-size: 13px;
+    }
+
+    .big-screen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(59, 130, 246, 0.2), transparent 55%),
+        radial-gradient(circle at 20% 30%, rgba(244, 211, 94, 0.25), transparent 60%),
+        #05070d;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      color: #f8fafc;
+    }
+
+    .big-screen.active {
+      display: flex;
+    }
+
+    .big-shell {
+      width: min(1280px, 92vw);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 24px;
+    }
+
+    .big-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .big-title {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .big-status {
+      font-size: 14px;
+      color: rgba(248, 250, 252, 0.7);
+    }
+
+    .big-countdown {
+      font-size: clamp(64px, 10vw, 140px);
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 3px;
+      color: #f4d35e;
+      text-shadow: 0 0 20px rgba(244, 211, 94, 0.4);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .big-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    @media (max-width: 980px) {
+      .big-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .big-card {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .big-card h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      color: #f8fafc;
+    }
+
+    .big-list {
+      display: grid;
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    .race-track {
+      position: relative;
+      border-radius: 16px;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(6, 10, 20, 0.9), rgba(10, 16, 30, 0.9));
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      min-height: 420px;
+    }
+
+    .race-segments {
+      position: absolute;
+      inset: 12px;
+      pointer-events: none;
+    }
+
+    .race-segment-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(148, 163, 184, 0.15);
+    }
+
+    .race-segment-label {
+      position: absolute;
+      top: -18px;
+      font-size: 10px;
+      color: rgba(248, 250, 252, 0.55);
+      transform: translateX(-50%);
+    }
+
+    .race-lanes {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+    }
+
+    .race-lanes.cols-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      grid-auto-rows: auto;
+      align-content: start;
+    }
+
+    .race-lanes.cols-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      grid-auto-rows: auto;
+      align-content: start;
+    }
+
+    .race-lane {
+      position: relative;
+      height: 42px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      overflow: hidden;
+    }
+
+    .race-lane::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.08) 6px, transparent 6px, transparent 18px);
+      opacity: 0.5;
+    }
+
+    .race-car {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translate(0, -50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(3, 7, 18, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      transition: transform 0.3s ease;
+      z-index: 2;
+    }
+
+    .race-track.compact .race-lane {
+      height: 34px;
+    }
+
+    .race-track.compact .race-car {
+      gap: 6px;
+      padding: 2px 6px;
+    }
+
+    .race-track.compact .race-score {
+      font-size: 11px;
+    }
+
+    .race-track.compact .race-rank {
+      min-width: 24px;
+      font-size: 10px;
+    }
+
+    .race-track.compact .avatar {
+      width: 22px;
+      height: 22px;
+      font-size: 10px;
+    }
+
+    .race-track.dense .race-lane {
+      height: 30px;
+    }
+
+    .race-track.dense .race-car {
+      gap: 4px;
+      padding: 2px 4px;
+    }
+
+    .race-rank {
+      font-size: 11px;
+      color: rgba(248, 250, 252, 0.7);
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .race-score {
+      font-size: 12px;
+      color: #f4d35e;
+      font-weight: 600;
+    }
+
+    .race-name {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: rgba(248, 250, 252, 0.9);
+      font-size: 12px;
+    }
+
+    .race-track.compact .race-name {
+      max-width: 120px;
+      font-size: 11px;
+    }
+
+    .big-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(9, 13, 24, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .big-score {
+      font-size: 18px;
+      font-weight: 600;
+      color: #37e2c9;
+    }
+
+    .big-meta {
+      font-size: 13px;
+      color: rgba(248, 250, 252, 0.65);
+    }
+
+    .big-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    body.big-open {
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="brand">
+        <h1>红包雨 · 管理控制台</h1>
+        <p>全局监控、轮次节奏与开奖流程统一在这里完成。</p>
+      </div>
+      <div class="chips">
+        <button id="followBtn" class="btn ghost" onclick="toggleFollow()">跟随当前</button>
+        <button id="bigScreenBtn" class="btn secondary" onclick="openBigScreen(true)">大屏模式</button>
+        <div id="connStatus" class="chip warn">未连接</div>
+      </div>
+    </div>
+
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="overview">监控面板</button>
+      <button class="tab-btn" data-tab="rounds">轮次配置</button>
+      <button class="tab-btn" data-tab="users">用户白名单</button>
+      <button class="tab-btn" data-tab="batches">批次历史</button>
+      <button class="tab-btn" data-tab="withdraw">提现资金</button>
+      <button class="tab-btn" data-tab="system">系统设置</button>
+    </div>
+
+    <section class="tab-panel active" data-tab-panel="overview">
+      <div class="grid stats">
+        <div class="card">
+          <h2>管理员登录</h2>
+          <label>管理员密码</label>
+          <div class="form-row" style="grid-template-columns: 1fr auto; align-items: end;">
+            <input id="adminPassword" type="password" placeholder="请输入密码" />
+            <button class="btn primary" onclick="adminLogin()">登录</button>
+          </div>
+          <div id="loginTip" class="meta" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>当前轮次</h2>
+          <div class="stat-value" id="roundTitle">--</div>
+          <div class="meta" id="roundMeta">状态：--</div>
+          <div style="margin-top:12px;">
+            <div class="meta">剩余时间</div>
+            <div class="stat-value" id="timeLeft">--</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>在线用户</h2>
+          <div class="stat-value" id="onlineCount">0</div>
+          <div class="progress" style="margin:10px 0;"><span id="onlineBar" style="width:0"></span></div>
+          <div class="stat-sub">参考人数：1000</div>
+        </div>
+
+        <div class="card">
+          <h2>实时点击 QPS</h2>
+          <div class="stat-value" id="qpsValue">0</div>
+          <div class="stat-sub">近 5 秒均值 / 1 秒峰值</div>
+          <div class="meta" id="qpsDetail">0 / 0</div>
+        </div>
+      </div>
+
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <h2>趋势 · QPS</h2>
+          <div class="meta">均值 <span id="qpsAvgText">0</span> | 峰值 <span id="qpsPeakText">0</span></div>
+          <canvas id="qpsChart" height="80"></canvas>
+        </div>
+        <div class="card">
+          <h2>趋势 · 排行榜 Top1 分数</h2>
+          <canvas id="scoreChart" height="80"></canvas>
+        </div>
+      </div>
+
+      <div class="grid main" style="margin-top:16px;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>轮次配置</h2>
+            <button class="btn ghost" onclick="copyConfig()">复制配置 JSON</button>
+          </div>
+          <div id="roundSummary" class="list" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>实时排行</h2>
+          <div id="leaderboard" class="list"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="tab-panel" data-tab-panel="rounds">
+      <div class="grid main" style="margin-top:16px;">
+        <div class="card" id="createRoundCard">
+          <h2>快速创建轮次</h2>
+          <div class="form-row" style="margin-bottom:8px;">
+            <div>
+              <label>标题</label>
+              <input id="title" placeholder="例如：年会红包雨" />
+            </div>
+            <div>
+              <label>难度级别</label>
+              <select id="difficultySelect">
+                <option value="easy">🌟 休闲模式</option>
+                <option value="medium" selected>⭐ 标准模式</option>
+                <option value="hard">🔥 挑战模式</option>
+                <option value="hell">💀 地狱模式</option>
+                <option value="party">🎉 派对模式</option>
+              </select>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                <button id="applyPresetBtn" class="btn secondary" type="button">应用预设</button>
+                <span id="presetStatus" class="meta">当前：预设·中级</span>
+              </div>
+              <div class="note" id="difficultyHint" style="margin-top:6px;"></div>
+            </div>
+            <div>
+              <label>奖池（元）</label>
+              <input id="totalPool" type="number" placeholder="例如：5000" />
+            </div>
+            <div>
+              <label>幸运池比例（%）</label>
+              <input id="luckyRatioInput" type="number" value="40" />
+            </div>
+            <div>
+              <label>基础池比例（%）</label>
+              <input id="baseRatioInput" type="number" value="60" />
+            </div>
+            <div>
+              <label>游戏时长（秒）</label>
+              <input id="duration" type="number" value="30" />
+            </div>
+            <div>
+              <label>倒计时（秒）</label>
+              <input id="countdownInput" type="number" value="3" />
+            </div>
+            <div>
+              <label>红包显示时间（ms）</label>
+              <input id="dropVisibleMsInput" type="number" placeholder="建议 2200 - 3200" />
+            </div>
+            <div>
+              <label>每秒红包数</label>
+              <input id="dropsPerSecInput" type="number" placeholder="例如 6 - 12" />
+            </div>
+          </div>
+          <div class="note">选择难度后点击“应用预设”填充参数，可再手动微调；填写“每秒红包数”会自动换算每片红包数。</div>
+          <div class="note" id="ratioHint" style="margin-top:6px;">当前分配：幸运池 40% + 基础池 60%（剩余用于补差）</div>
+
+          <details open>
+            <summary>高级设置（非核心）</summary>
+            <div class="form-row" style="margin-top:12px;">
+              <div>
+                <label>切片时长（ms）</label>
+                <input id="sliceMsInput" type="number" placeholder="默认 1000" />
+              </div>
+              <div>
+                <label>每片红包数</label>
+                <input id="dropsPerSliceInput" type="number" placeholder="默认智能" />
+              </div>
+              <div>
+                <label>每片炸弹数</label>
+                <input id="bombsPerSliceInput" type="number" placeholder="默认 20%" />
+              </div>
+              <div>
+                <label>每片大红包数</label>
+                <input id="bigsPerSliceInput" type="number" placeholder="默认 0" />
+              </div>
+              <div>
+                <label>每片空包数</label>
+                <input id="emptyPerSliceInput" type="number" placeholder="默认 0" />
+              </div>
+              <div>
+                <label>总幸运分</label>
+                <input id="scoreTotalInput" type="number" placeholder="默认 1000" />
+              </div>
+              <div>
+                <label>炸弹扣分</label>
+                <input id="bombPenaltyInput" type="number" placeholder="默认 50" />
+              </div>
+              <div>
+                <label>大红包倍率</label>
+                <input id="bigMultiplierInput" type="number" step="0.1" placeholder="默认 2.0" />
+              </div>
+              <div>
+                <label>速度上限（越小越慢）</label>
+                <input id="maxSpeedInput" type="number" step="0.05" placeholder="默认 1.0" />
+              </div>
+              <div>
+                <label>最小中奖（元）</label>
+                <input id="minAwardInput" type="number" placeholder="可空" />
+              </div>
+              <div>
+                <label>最大中奖（元）</label>
+                <input id="maxAwardInput" type="number" placeholder="可空" />
+              </div>
+              <div>
+                <label>尾差补偿前 N 名</label>
+                <input id="tailTopNInput" type="number" value="3" />
+              </div>
+              <div>
+                <label>排名分段数</label>
+                <input id="rankSegmentsInput" type="number" value="10" />
+              </div>
+            </div>
+            <div class="note" style="margin-top:8px;">最小/最大中奖当前不参与开奖算法。</div>
+          </details>
+
+          <div class="footer-actions">
+            <button class="btn primary" onclick="createRound()">创建</button>
+            <button class="btn" onclick="lockRound()">锁定</button>
+            <button class="btn secondary" onclick="startRound()">开始</button>
+            <button class="btn danger" onclick="drawRound()">开奖</button>
+          </div>
+          <div id="createResult" class="meta" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="grid" style="gap:16px;">
+          <div class="card">
+            <h2>流程提示</h2>
+            <div class="flow-box" style="margin-top:6px;">
+              <div class="flow-step">
+                <span id="flowStatusText">当前阶段：--</span>
+                <span id="flowStatusTag" class="status-tag">--</span>
+              </div>
+              <div id="flowHint" class="note">等待加载轮次信息...</div>
+            </div>
+            <div class="footer-actions">
+              <button id="flowActionBtn" class="btn primary" onclick="handleFlowAction()">执行下一步</button>
+              <button id="flowSecondaryBtn" class="btn ghost" onclick="handleFlowSecondary()"
+                style="display:none;">查看批次</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="users">
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>在线用户</h2>
+            <button class="btn ghost" onclick="loadOnlineUsers()">刷新</button>
+          </div>
+          <div class="note">近 20 秒心跳活跃用户</div>
+          <div id="onlineUsers" class="list" style="max-height:260px; overflow:auto; margin-top:10px;"></div>
+          <div class="note" style="margin-top:10px;">锁定后会弹出在线用户清单，可一键导入白名单。</div>
+        </div>
+
+        <div class="card">
+          <h2>白名单导入</h2>
+          <label>手机号列表（逗号或换行分隔）</label>
+          <textarea id="whitelistPhones" placeholder="138xxxx, 139xxxx"></textarea>
+          <button class="btn primary" onclick="addWhitelist()" style="margin-top:12px;">导入</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="batches">
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <h2>开奖批次</h2>
+          <div id="batchList" class="list"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>历史轮次</h2>
+            <button class="btn ghost" onclick="loadRounds()">刷新</button>
+          </div>
+          <div id="roundList" class="list" style="max-height:260px; overflow:auto; margin-top:12px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="withdraw">
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>提现申请开关</h2>
+            <div class="switch">
+              <input id="withdrawSwitch" type="checkbox" />
+              <span id="withdrawSwitchText">未加载</span>
+            </div>
+          </div>
+          <div class="note" id="withdrawSwitchHint" style="margin-top:8px;">关闭后用户端将无法提交新的提现申请。</div>
+        </div>
+        <div class="card">
+          <h2>提现队列提示</h2>
+          <div class="note" id="withdrawQueueHint" style="margin-top:8px;">等待加载提现数据...</div>
+        </div>
+      </div>
+
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>提现管理</h2>
+            <button class="btn ghost" onclick="loadWithdrawsAdmin(true)">刷新</button>
+          </div>
+          <div class="form-row" style="margin-top:12px;">
+            <div>
+              <label>状态过滤</label>
+              <select id="withdrawStatusFilter">
+                <option value="">全部</option>
+                <option value="PENDING">待处理</option>
+                <option value="WAITING_FUNDS">余额不足等待</option>
+                <option value="PROCESSING">处理中</option>
+                <option value="PAID">已到账</option>
+                <option value="FAILED">失败</option>
+                <option value="REFUNDED">已退款</option>
+              </select>
+            </div>
+            <div>
+              <label>每页数量</label>
+              <select id="withdrawLimit">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <div>
+              <label>分页操作</label>
+              <div style="display:flex; gap:8px; align-items:flex-end;">
+                <button class="btn ghost" onclick="prevWithdrawPage()">上一页</button>
+                <button class="btn ghost" onclick="nextWithdrawPage()">下一页</button>
+              </div>
+            </div>
+          </div>
+          <div id="withdrawMeta" class="note" style="margin-top:10px;">等待加载...</div>
+          <div id="withdrawListAdmin" class="list" style="max-height:320px; overflow:auto; margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h2>支付宝资金查询</h2>
+          <div class="form-row" style="margin-top:12px;">
+            <div>
+              <label>账户查询 - Alipay User ID</label>
+              <input id="alipayUserIdInput" placeholder="可选" />
+            </div>
+            <div>
+              <label>账户类型 account_type</label>
+              <input id="alipayAccountTypeInput" placeholder="可选" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn secondary" onclick="queryAlipayAccount()">查询账户</button>
+            </div>
+          </div>
+          <div id="alipayAccountSummary" class="list" style="margin-top:12px;"></div>
+          <textarea id="alipayAccountResult" class="result-box" readonly placeholder="账户查询结果将在这里显示"></textarea>
+
+          <div class="form-row" style="margin-top:16px;">
+            <div>
+              <label>额度查询 product_code</label>
+              <input id="alipayProductCodeInput" placeholder="默认 TRANS_ACCOUNT_NO_PWD" />
+            </div>
+            <div>
+              <label>额度查询 biz_scene</label>
+              <input id="alipayBizSceneInput" placeholder="默认 DIRECT_TRANSFER" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn secondary" onclick="queryAlipayQuota()">查询额度</button>
+            </div>
+          </div>
+          <textarea id="alipayQuotaResult" class="result-box" readonly placeholder="额度查询结果将在这里显示"></textarea>
+
+          <div class="form-row" style="margin-top:16px;">
+            <div>
+              <label>转账测试 - 收款账号</label>
+              <input id="alipayTestAccountInput" placeholder="手机号 / 邮箱" />
+            </div>
+            <div>
+              <label>转账测试 - 收款姓名</label>
+              <input id="alipayTestNameInput" placeholder="真实姓名" />
+            </div>
+            <div>
+              <label>转账测试 - 金额(元)</label>
+              <input id="alipayTestAmountInput" type="number" placeholder="最小 0.1" />
+            </div>
+            <div>
+              <label>转账场景信息类型</label>
+              <input id="alipaySceneInfoTypeInput" placeholder="如：业务场景" />
+            </div>
+            <div>
+              <label>转账场景信息内容</label>
+              <input id="alipaySceneInfoContentInput" placeholder="如：年会红包提现" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn primary" onclick="transferTest()">发起转账测试</button>
+            </div>
+          </div>
+          <label style="margin-top:10px; display:block;">转账场景上报信息(JSON 数组，可选，优先级最高)</label>
+          <textarea id="alipaySceneReportJson" class="result-box"
+            placeholder='可选示例：[{"info_type":"业务场景","info_content":"年会红包提现"}]'></textarea>
+          <textarea id="alipayTransferResult" class="result-box" readonly placeholder="转账测试结果将在这里显示"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="system">
+      <div class="grid split" style="margin-top:16px;">
+        <div class="card">
+          <h2>⚠️ 数据重置</h2>
+          <div class="note" style="color:#e74c3c; margin-top:8px;">
+            <strong>危险操作！</strong>此操作将清空所有数据表并重置自增ID，包括：用户、轮次、评分、钱包、提现记录等。此操作不可撤销！
+          </div>
+          <div class="form-row" style="margin-top:16px;">
+            <div>
+              <label>初始化密钥 (INIT_SECRET)</label>
+              <input id="initSecretInput" type="password" placeholder="请输入初始化密钥" autocomplete="off" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn" style="background:#e74c3c; color:#fff;" onclick="resetAllData()">🗑️ 清空所有数据</button>
+            </div>
+          </div>
+          <div id="resetResult" class="note" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h2>系统信息</h2>
+          <div class="note" style="margin-top:8px;">版本：v1.0.0</div>
+          <div class="note">数据重置功能需要在 .env 文件中配置 INIT_SECRET 才能使用。</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="lockModal" class="modal">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>锁定后在线用户清单</h2>
+        <button class="btn ghost" onclick="closeLockModal()">关闭</button>
+      </div>
+      <div class="note">锁定后在线用户可一键导入白名单</div>
+      <div id="lockOnlineUsers" class="list" style="max-height:280px; overflow:auto; margin-top:12px;"></div>
+      <div class="footer-actions">
+        <button class="btn secondary" onclick="importAllOnline()">一键导入白名单</button>
+        <button class="btn" onclick="closeLockModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bigScreen" class="big-screen">
+    <div class="big-shell">
+      <div class="big-header">
+        <div>
+          <div class="big-title" id="bigTitle">红包雨进行中</div>
+          <div class="big-status" id="bigStatus">等待开始</div>
+        </div>
+        <div class="big-actions">
+          <button class="btn ghost" onclick="toggleBrowserFullscreen()">进入全屏</button>
+          <button class="btn" onclick="closeBigScreen(true)">退出大屏</button>
+        </div>
+      </div>
+      <div class="big-countdown" id="bigCountdown">--</div>
+      <div class="big-grid">
+        <div class="big-card">
+          <h3>实时排行赛道</h3>
+          <div class="race-track">
+            <div id="raceSegments" class="race-segments"></div>
+            <div id="raceLanes" class="race-lanes"></div>
+          </div>
+          <div class="big-meta" id="bigLeaderboardHint">实时刷新中...</div>
+        </div>
+        <div class="big-card">
+          <h3>本轮进度</h3>
+          <div id="bigRoundSummary" class="list"></div>
+          <div id="bigAlgoLogic" class="big-meta" style="margin-top:10px;"></div>
+          <div class="big-meta" id="bigRoundHint">等待轮次启动</div>
+          <div class="big-actions" style="margin-top:14px;">
+            <button id="bigDrawBtn" class="btn primary" onclick="drawRound()">开奖</button>
+            <button id="bigViewBatchesBtn" class="btn ghost" onclick="switchTab('batches')"
+              style="display:none;">查看批次</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =====================
+    // State & Config
+    // =====================
+    const apiBase = '';
+    const tokenKey = 'admin_jwt';
+    let currentRoundId = null;
+    let currentRoundConfig = null;
+    let pollTimer = null;
+    let followCurrent = true;
+    const qpsSeries = [];
+    const scoreSeries = [];
+    let onlineUserCache = [];
+    let presetMode = 'preset';
+    let withdrawOffset = 0;
+    let withdrawLastCount = 0;
+    let withdrawTick = 0;
+    let leaderboardCache = [];
+    let leaderboardLimit = 10;
+    let roundStatusCache = '';
+    let lastDifficultyKey = 'medium';
+    let bigScreenDismissed = false;
+    let flowAction = null;
+    let flowSecondary = null;
+    let liveRoundId = null;
+    let liveRoundConfig = null;
+    let liveRoundStatus = '';
+    let liveLeaderboardCache = [];
+    let liveLeaderboardLimit = 10;
+    let liveScoreUsers = 0;
+    let lastNonEmptyLiveLeaderboard = [];
+    let lastLiveMetrics = null;
+    let leaderboardTimer = null;
+    let leaderboardLock = false;
+    let pollLock = false;
+    let onlineUsersLock = false;
+    let withdrawsLock = false;
+    let raceLaneMap = new Map();
+    let raceSegmentCount = 10;
+    let lastSummaryKey = '';
+
+    const difficultyPresets = {
+      // =====================================================
+      // 专业游戏设计参数 v2 - 重新平衡
+      // =====================================================
+      // 【关键发现】速度由 drop_visible_ms 决定，不是 max_speed
+      // drop_visible_ms 越小 = 下落越快 = 反应时间越短
+      // max_speed 只是速度上限，主要影响游戏后期加速
+      // =====================================================
+
+      easy: {
+        label: '🌟 休闲模式',
+        // 设计目标：超级轻松，人人能玩，全员普惠
+        slice_ms: 1600,          // 每1.6秒一批 → 非常从容的节奏
+        drop_visible_ms: 4500,   // 4.5秒可见！→ 超慢速下落，充足反应时间
+        drops_per_slice: 3,      // 每批仅3个 → 屏幕稀疏，不拥挤
+        bombs_per_slice: 0,      // 显式设为0 → 无炸弹（已修复后端）
+        bigs_per_slice: 1,       // 每批1个大红包
+        empty_per_slice: 0,      // 无空包
+        score_total: 500,        // 每切片500分
+        bomb_penalty: 0,         // 显式设为0 → 无惩罚（已修复后端）
+        big_multiplier: 1.5,     // 大红包1.5倍
+        max_speed: 0.5           // 低速上限
+        // 体验：悠闲漫步摘红包
+      },
+
+      medium: {
+        label: '⭐ 标准模式',
+        // 设计目标：适度挑战，大众娱乐首选
+        slice_ms: 1200,          // 每1.2秒一批 → 轻快节奏
+        drop_visible_ms: 3000,   // 3秒可见 → 正常反应速度
+        drops_per_slice: 5,      // 每批5个 → 适中密度
+        bombs_per_slice: 1,      // 每批1个炸弹 → 20%概率
+        bigs_per_slice: 1,       // 每批1个大红包
+        empty_per_slice: 0,      // 无空包
+        score_total: 700,        // 每切片700分
+        bomb_penalty: 25,        // 炸弹扣25分 → 轻度惩罚
+        big_multiplier: 1.8,     // 大红包1.8倍
+        max_speed: 0.8           // 中等速度上限
+        // 体验：有节奏感，稍需注意炸弹
+      },
+
+      hard: {
+        label: '🔥 挑战模式',
+        // 设计目标：快节奏高强度
+        slice_ms: 900,           // 每0.9秒一批 → 密集节奏
+        drop_visible_ms: 2200,   // 2.2秒可见 → 较快下落
+        drops_per_slice: 6,      // 每批6个 → 高密度
+        bombs_per_slice: 1,      // 每批1个炸弹
+        bigs_per_slice: 1,       // 每批1个大红包
+        empty_per_slice: 1,      // 每批1个空包干扰
+        score_total: 900,        // 每切片900分
+        bomb_penalty: 60,        // 炸弹扣60分 → 中度惩罚
+        big_multiplier: 2.0,     // 大红包2倍
+        max_speed: 1.0           // 高速上限
+        // 体验：手忙脚乱但刺激
+      },
+
+      hell: {
+        label: '💀 地狱模式',
+        // 设计目标：极限挑战，只给高手
+        slice_ms: 700,           // 每0.7秒一批 → 极高密度
+        drop_visible_ms: 1600,   // 1.6秒可见 → 飞速下落！
+        drops_per_slice: 7,      // 每批7个
+        bombs_per_slice: 2,      // 每批2个炸弹 → 29%概率
+        bigs_per_slice: 1,       // 每批1个大红包
+        empty_per_slice: 1,      // 每批1个空包
+        score_total: 1100,       // 每切片1100分
+        bomb_penalty: 100,       // 炸弹扣100分 → 重度惩罚！
+        big_multiplier: 2.5,     // 大红包2.5倍 → 高风险高回报
+        max_speed: 1.2           // 最高速度
+        // 体验：只有最强者才能生存
+      },
+
+      party: {
+        label: '🎉 派对模式',
+        // 设计目标：视觉震撼，欢乐氛围
+        slice_ms: 600,           // 每0.6秒一批 → 红包雨暴风！
+        drop_visible_ms: 3200,   // 3.2秒可见 → 虽多但不太快
+        drops_per_slice: 10,     // 每批10个！→ 满屏红包
+        bombs_per_slice: 0,      // 无炸弹 → 尽情点！
+        bigs_per_slice: 3,       // 每批3个大红包 → 惊喜连连
+        empty_per_slice: 0,      // 无空包
+        score_total: 400,        // 每切片400分（单个分值低但数量多）
+        bomb_penalty: 0,         // 无惩罚
+        big_multiplier: 2.0,     // 大红包2倍
+        max_speed: 0.9           // 适中速度
+        // 体验：年会氛围担当，满屏金光
+      }
+    };
+
+    const roundStatusLabels = {
+      WAITING: '待开始',
+      LOCKED: '已锁定',
+      COUNTDOWN: '倒计时',
+      RUNNING: '进行中',
+      READY_DRAW: '待开奖',
+      DRAWING: '开奖中',
+      PENDING_CONFIRM: '待确认入账',
+      FINISHED: '已结束'
+    };
+
+    const batchStatusLabels = {
+      PENDING_CONFIRM: '待确认入账',
+      CONFIRMED: '已确认入账'
+    };
+
+    // =====================
+    // Helpers
+    // =====================
+    function getToken() {
+      return sessionStorage.getItem(tokenKey) || '';
+    }
+
+    function setToken(token) {
+      sessionStorage.setItem(tokenKey, token);
+    }
+
+    function adminHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getToken()
+      };
+    }
+
+    function setConnStatus(text, ok = true) {
+      const el = document.getElementById('connStatus');
+      if (!el) return;
+      el.innerText = text;
+      el.className = ok ? 'chip ok' : 'chip warn';
+    }
+
+    function toggleFollow() {
+      setFollowCurrent(!followCurrent);
+    }
+
+    function setFollowCurrent(val) {
+      followCurrent = !!val;
+      const btn = document.getElementById('followBtn');
+      if (btn) btn.innerText = followCurrent ? '跟随当前' : '已暂停跟随';
+    }
+
+    function yuanToFen(val) {
+      const num = parseFloat(val || '0');
+      return Math.round(num * 100);
+    }
+
+    function maskPhone(phone) {
+      if (!phone || phone.length < 7) return phone || '';
+      return phone.slice(0, 3) + '****' + phone.slice(-4);
+    }
+
+    function maskKeep(val, head, tail) {
+      const raw = String(val || '');
+      if (!raw) return '';
+      if (raw.length <= head + tail) return raw;
+      return raw.slice(0, head) + '*'.repeat(raw.length - head - tail) + raw.slice(-tail);
+    }
+
+    function escapeHTML(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTime(val) {
+      if (!val) return '--';
+      const d = new Date(val);
+      if (Number.isNaN(d.getTime())) return '--';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function pushSeries(arr, value) {
+      arr.push(value);
+      if (arr.length > 30) arr.shift();
+    }
+
+    function roundStatusLabel(status) {
+      return roundStatusLabels[status] || status || '--';
+    }
+
+    function roundStatusClass(status) {
+      if (status === 'RUNNING' || status === 'FINISHED') return 'ok';
+      if (['WAITING', 'LOCKED', 'COUNTDOWN', 'READY_DRAW', 'DRAWING', 'PENDING_CONFIRM'].includes(status)) return 'warn';
+      return '';
+    }
+
+    function batchStatusLabel(status) {
+      return batchStatusLabels[status] || status || '--';
+    }
+
+    function batchStatusClass(status) {
+      if (status === 'CONFIRMED') return 'ok';
+      if (status === 'PENDING_CONFIRM') return 'warn';
+      return '';
+    }
+
+    function avatarHue(id) {
+      const num = parseInt(id || '0', 10);
+      return Math.abs(num * 37) % 360;
+    }
+
+    function renderAvatar(item, sizeClass = '') {
+      const url = item.avatar_url || item.avatar || '';
+      const nickname = item.nickname || '';
+      const uid = item.user_id || item.id || 0;
+      const fallback = nickname ? nickname.slice(0, 1) : String(uid || 'U').slice(-1);
+      if (url) {
+        return `<img class="avatar ${sizeClass}" src="${escapeHTML(url)}" alt="${escapeHTML(nickname || '用户')}" />`;
+      }
+      const hue = avatarHue(uid);
+      return `<div class="avatar ${sizeClass} fallback" style="--avatar-hue:${hue};">${escapeHTML(fallback)}</div>`;
+    }
+
+    function renderUserName(item) {
+      const nickname = item.nickname ? escapeHTML(item.nickname) : '';
+      const userId = item.user_id || item.id || '';
+      const phone = item.phone ? maskPhone(item.phone) : '';
+      const parts = [];
+      if (nickname) parts.push(nickname);
+      if (userId) parts.push(`用户${userId}`);
+      if (phone) parts.push(phone);
+      return parts.join(' · ') || '--';
+    }
+
+    function renderRaceName(item) {
+      if (item.nickname) return escapeHTML(item.nickname);
+      if (item.phone) return maskPhone(item.phone);
+      const uid = item.user_id || item.id || '';
+      return uid ? `用户${uid}` : '--';
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+      document.querySelectorAll('[data-tab-panel]').forEach(panel => {
+        panel.classList.toggle('active', panel.dataset.tabPanel === tab);
+      });
+    }
+
+    function initTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+    }
+
+    function handleFlowAction() {
+      if (typeof flowAction === 'function') {
+        flowAction();
+      }
+    }
+
+    function handleFlowSecondary() {
+      if (typeof flowSecondary === 'function') {
+        flowSecondary();
+      }
+    }
+
+    function updateFlowHint(round) {
+      const status = round?.status || '';
+      const statusLabel = roundStatusLabel(status);
+      const statusTag = document.getElementById('flowStatusTag');
+      const statusText = document.getElementById('flowStatusText');
+      const hintEl = document.getElementById('flowHint');
+      const actionBtn = document.getElementById('flowActionBtn');
+      const secondaryBtn = document.getElementById('flowSecondaryBtn');
+      if (statusTag) {
+        statusTag.innerText = statusLabel;
+        statusTag.className = `status-tag ${roundStatusClass(status)}`;
+      }
+      if (statusText) {
+        statusText.innerText = `当前阶段：${statusLabel}`;
+      }
+
+      let hint = '等待轮次信息...';
+      flowAction = null;
+      flowSecondary = null;
+      if (!round || !round.id) {
+        hint = '请先创建轮次并完成参数确认。';
+        flowAction = () => {
+          switchTab('rounds');
+          document.getElementById('createRoundCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        if (actionBtn) actionBtn.innerText = '去创建';
+      } else if (status === 'WAITING') {
+        hint = '轮次已创建，建议先锁定在线用户并确认白名单。';
+        flowAction = () => lockRound();
+        if (actionBtn) actionBtn.innerText = '锁定轮次';
+      } else if (status === 'LOCKED') {
+        hint = '锁定完成，可以开始倒计时并进入红包雨。';
+        flowAction = () => startRound();
+        if (actionBtn) actionBtn.innerText = '开始倒计时';
+      } else if (status === 'COUNTDOWN') {
+        hint = '倒计时进行中，请关注大屏展示。';
+        if (actionBtn) actionBtn.innerText = '进行中';
+      } else if (status === 'RUNNING') {
+        hint = '红包雨正在进行，实时排行已同步到大屏。';
+        if (actionBtn) actionBtn.innerText = '进行中';
+      } else if (status === 'READY_DRAW') {
+        hint = '游戏已结束，可以立即开奖生成批次。';
+        flowAction = () => drawRound();
+        if (actionBtn) actionBtn.innerText = '开奖';
+      } else if (status === 'DRAWING') {
+        hint = '开奖计算中，请稍候。';
+        if (actionBtn) actionBtn.innerText = '计算中';
+      } else if (status === 'PENDING_CONFIRM') {
+        hint = '批次待确认入账，请前往批次列表完成确认。';
+        flowAction = () => switchTab('batches');
+        flowSecondary = () => openBigScreen(true);
+        if (actionBtn) actionBtn.innerText = '查看批次';
+        if (secondaryBtn) {
+          secondaryBtn.style.display = 'inline-flex';
+          secondaryBtn.innerText = '大屏回放';
+        }
+      } else if (status === 'FINISHED') {
+        hint = '本轮已完成，可准备下一轮配置。';
+        flowAction = () => {
+          switchTab('rounds');
+          document.getElementById('createRoundCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        if (actionBtn) actionBtn.innerText = '创建新轮次';
+      }
+
+      if (hintEl) hintEl.innerText = hint;
+      if (actionBtn) {
+        actionBtn.disabled = !flowAction;
+        if (!flowAction && !['COUNTDOWN', 'RUNNING', 'DRAWING'].includes(status)) {
+          actionBtn.disabled = true;
+        }
+      }
+      if (secondaryBtn && status !== 'PENDING_CONFIRM') {
+        secondaryBtn.style.display = 'none';
+      }
+    }
+
+    function openBigScreen(manual = false) {
+      const overlay = document.getElementById('bigScreen');
+      if (!overlay) return;
+      if (manual) {
+        bigScreenDismissed = false;
+      }
+      overlay.classList.add('active');
+      document.body.classList.add('big-open');
+      if (lastLiveMetrics) {
+        updateBigScreen(lastLiveMetrics, { noToggle: true });
+      }
+    }
+
+    function closeBigScreen(manual = false) {
+      const overlay = document.getElementById('bigScreen');
+      if (!overlay) return;
+      if (manual) {
+        bigScreenDismissed = true;
+      }
+      overlay.classList.remove('active');
+      document.body.classList.remove('big-open');
+    }
+
+    function toggleBrowserFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => { });
+      } else {
+        document.exitFullscreen().catch(() => { });
+      }
+    }
+
+    function renderRaceSegments(count) {
+      const segEl = document.getElementById('raceSegments');
+      if (!segEl) return;
+      segEl.innerHTML = '';
+      if (count <= 1) return;
+      for (let i = 1; i < count; i += 1) {
+        const line = document.createElement('div');
+        line.className = 'race-segment-line';
+        const left = (i / count) * 100;
+        line.style.left = `${left}%`;
+        const label = document.createElement('div');
+        label.className = 'race-segment-label';
+        label.style.left = `${left}%`;
+        label.innerText = `${i}/${count}`;
+        segEl.appendChild(line);
+        segEl.appendChild(label);
+      }
+    }
+
+    function renderBigLeaderboard(items, status) {
+      const lanesEl = document.getElementById('raceLanes');
+      const hint = document.getElementById('bigLeaderboardHint');
+      if (!lanesEl) return;
+      const trackEl = lanesEl.closest('.race-track');
+      if (!items || items.length === 0) {
+        lanesEl.innerHTML = '<div class="note">暂无排行数据</div>';
+        raceLaneMap = new Map();
+        if (trackEl) {
+          trackEl.classList.remove('compact');
+          trackEl.classList.remove('dense');
+        }
+        lanesEl.classList.remove('cols-2', 'cols-3');
+        lanesEl.style.gridTemplateColumns = '';
+        if (hint) hint.innerText = '等待玩家参与...';
+        return;
+      }
+      const isFinal = ['READY_DRAW', 'DRAWING', 'PENDING_CONFIRM', 'FINISHED'].includes(status);
+      const segmentCount = liveRoundConfig?.rank_segments || 10;
+      if (segmentCount !== raceSegmentCount) {
+        raceSegmentCount = segmentCount;
+        renderRaceSegments(segmentCount);
+      }
+      const maxScore = items[0]?.score || 1;
+      const currentIDs = new Set();
+      const lanes = [];
+      const total = items.length;
+      if (trackEl) {
+        trackEl.classList.toggle('compact', total > 30);
+        trackEl.classList.toggle('dense', total > 60);
+      }
+      const useCols = total > 40 ? (total > 100 ? 3 : 2) : 1;
+      lanesEl.classList.toggle('cols-2', useCols === 2);
+      lanesEl.classList.toggle('cols-3', useCols === 3);
+      if (useCols === 1) {
+        lanesEl.style.gridTemplateColumns = '';
+      }
+      items.forEach((item, idx) => {
+        currentIDs.add(item.user_id);
+        let lane = raceLaneMap.get(item.user_id);
+        if (!lane) {
+          lane = document.createElement('div');
+          lane.className = 'race-lane';
+          const car = document.createElement('div');
+          car.className = 'race-car';
+          lane.appendChild(car);
+          raceLaneMap.set(item.user_id, lane);
+        }
+        lane.dataset.score = String(item.score || 0);
+        const car = lane.querySelector('.race-car');
+        if (car) {
+          car.innerHTML = `
+            <span class="race-rank">#${idx + 1}</span>
+            ${renderAvatar(item, 'mini')}
+            <span class="race-name">${renderRaceName(item)}</span>
+            <span class="race-score">${item.score}</span>
+          `;
+        }
+        lane.dataset.rank = String(idx + 1);
+        lanes.push(lane);
+      });
+      for (const [uid, lane] of raceLaneMap.entries()) {
+        if (!currentIDs.has(uid)) {
+          lane.remove();
+          raceLaneMap.delete(uid);
+        }
+      }
+      lanesEl.innerHTML = '';
+      lanes.forEach((lane) => lanesEl.appendChild(lane));
+      lanes.forEach((lane) => {
+        const car = lane.querySelector('.race-car');
+        if (!car) return;
+        const scoreVal = parseFloat(lane.dataset.score || '0');
+        const laneWidth = lane.clientWidth || lanesEl.clientWidth;
+        const trackWidth = Math.max(120, laneWidth - 120);
+        const progress = maxScore > 0 ? scoreVal / maxScore : 0;
+        const x = Math.max(0, Math.min(trackWidth, progress * trackWidth));
+        car.style.transform = `translate(${x}px, -50%)`;
+      });
+      if (hint) {
+        if (isFinal) {
+          hint.innerText = '已结束，显示本轮排行';
+        } else {
+          hint.innerText = '实时刷新中...';
+        }
+      }
+    }
+
+    function leaderboardChanged(prevList, nextList) {
+      if (!prevList || !nextList) return true;
+      if (prevList.length !== nextList.length) return true;
+      for (let i = 0; i < nextList.length; i += 1) {
+        const prev = prevList[i];
+        const next = nextList[i];
+        if (!prev || !next) return true;
+        if (prev.user_id !== next.user_id || prev.score !== next.score) return true;
+      }
+      return false;
+    }
+
+    function renderBigRoundSummary(round, scoreSum, scoreUsers) {
+      const el = document.getElementById('bigRoundSummary');
+      if (!el) return;
+      if (!round) {
+        el.innerHTML = '<div class="note">暂无轮次</div>';
+        return;
+      }
+      const sumText = typeof scoreSum === 'number' ? scoreSum : '--';
+      const userText = typeof scoreUsers === 'number' ? scoreUsers : '--';
+      el.innerHTML = `
+        <div class="list-item"><span>轮次</span><span>#${round.id}</span></div>
+        <div class="list-item"><span>标题</span><span>${escapeHTML(round.title || '红包雨')}</span></div>
+        <div class="list-item"><span>奖池</span><span>${(round.total_pool / 100).toFixed(2)} 元</span></div>
+        <div class="list-item"><span>状态</span><span>${roundStatusLabel(round.status)}</span></div>
+        <div class="list-item"><span>时长</span><span>${round.duration_sec}s</span></div>
+        <div class="list-item"><span>累计分值</span><span>${sumText}</span></div>
+        <div class="list-item"><span>参与人数</span><span>${userText}</span></div>
+      `;
+    }
+
+    function renderAlgoLogic(round) {
+      const el = document.getElementById('bigAlgoLogic');
+      if (!el) return;
+      if (!round) {
+        el.innerText = '';
+        return;
+      }
+      const lucky = round.lucky_ratio || 0;
+      const base = round.base_ratio || 0;
+      const tail = round.tail_top_n || 0;
+      const segments = round.rank_segments || 10;
+      el.innerText = `开奖算法：奖池分为 幸运池${lucky}% + 基础池${base}%，基础分配权重=分值^1.4，幸运池随机抽奖(权重同上)，尾差补给前${tail}名；排行分段 ${segments}。`;
+    }
+
+    function updateBigScreen(data, opts = {}) {
+      const round = data.round || null;
+      const status = round?.status || '';
+      if (!opts.noToggle) {
+        if (['WAITING', 'LOCKED', 'FINISHED', ''].includes(status)) {
+          bigScreenDismissed = false;
+        }
+        const shouldShow = ['COUNTDOWN', 'RUNNING', 'READY_DRAW', 'DRAWING', 'PENDING_CONFIRM'].includes(status);
+        if (shouldShow && !bigScreenDismissed) {
+          openBigScreen(false);
+        }
+        if (!shouldShow) {
+          closeBigScreen(false);
+        }
+      }
+      const titleEl = document.getElementById('bigTitle');
+      const statusEl = document.getElementById('bigStatus');
+      const countdownEl = document.getElementById('bigCountdown');
+      const hintEl = document.getElementById('bigRoundHint');
+      const drawBtn = document.getElementById('bigDrawBtn');
+      const viewBatchesBtn = document.getElementById('bigViewBatchesBtn');
+      const now = data.server_time || Date.now();
+      if (titleEl) titleEl.innerText = round?.title || '红包雨进行中';
+      if (statusEl) statusEl.innerText = `状态：${roundStatusLabel(status)}`;
+      if (countdownEl) {
+        if (status === 'COUNTDOWN' && round?.start_at) {
+          const remain = Math.max(0, Math.ceil((round.start_at - now) / 1000));
+          countdownEl.innerText = `${remain}s`;
+        } else if (status === 'RUNNING' && round?.end_at) {
+          const remain = Math.max(0, Math.ceil((round.end_at - now) / 1000));
+          countdownEl.innerText = `${remain}s`;
+        } else if (['READY_DRAW', 'DRAWING', 'PENDING_CONFIRM', 'FINISHED'].includes(status)) {
+          countdownEl.innerText = '已结束';
+        } else {
+          countdownEl.innerText = '--';
+        }
+      }
+      if (hintEl) {
+        if (status === 'READY_DRAW') {
+          hintEl.innerText = '本轮已结束，等待开奖。';
+        } else if (status === 'PENDING_CONFIRM') {
+          hintEl.innerText = '开奖已完成，等待确认入账。';
+        } else if (status === 'RUNNING') {
+          hintEl.innerText = '红包雨进行中，实时排行已同步。';
+        } else {
+          hintEl.innerText = '等待轮次启动';
+        }
+      }
+      if (drawBtn) {
+        drawBtn.style.display = status === 'READY_DRAW' ? 'inline-flex' : 'none';
+      }
+      if (viewBatchesBtn) {
+        viewBatchesBtn.style.display = status === 'PENDING_CONFIRM' ? 'inline-flex' : 'none';
+      }
+      const summaryKey = round ? [
+        round.id,
+        round.status,
+        round.lucky_ratio,
+        round.base_ratio,
+        round.tail_top_n,
+        round.rank_segments,
+        data.score_sum,
+        data.score_users
+      ].join('|') : '';
+      if (summaryKey !== lastSummaryKey) {
+        renderBigRoundSummary(round, data.score_sum, data.score_users);
+        renderAlgoLogic(round);
+        lastSummaryKey = summaryKey;
+      }
+      renderBigLeaderboard(liveLeaderboardCache, status);
+    }
+
+    // =====================
+    // Preset Logic
+    // =====================
+    function getPreset() {
+      const key = document.getElementById('difficultySelect')?.value || 'medium';
+      return difficultyPresets[key] || difficultyPresets.medium;
+    }
+
+    function refreshDifficultyHint() {
+      const preset = getPreset();
+      const el = document.getElementById('difficultyHint');
+      if (!el || !preset) return;
+      el.innerText = `${preset.label}：显示${preset.drop_visible_ms}ms / 每片${preset.drops_per_slice}红包 / 炸弹${preset.bombs_per_slice} / 大红包${preset.bigs_per_slice} / 空包${preset.empty_per_slice} / 幸运分${preset.score_total} / 速度上限${preset.max_speed}`;
+    }
+
+    function updateRatioHint() {
+      const lucky = parseInt(document.getElementById('luckyRatioInput')?.value || '0', 10) || 0;
+      const base = parseInt(document.getElementById('baseRatioInput')?.value || '0', 10) || 0;
+      const hint = document.getElementById('ratioHint');
+      if (!hint) return;
+      const rest = Math.max(0, 100 - lucky - base);
+      hint.innerText = `当前分配：幸运池 ${lucky}% + 基础池 ${base}%（剩余 ${rest}% 用于补差）`;
+    }
+
+    function updatePresetStatus() {
+      const el = document.getElementById('presetStatus');
+      const preset = getPreset();
+      if (!el || !preset) return;
+      if (presetMode === 'custom') {
+        el.innerText = '当前：自定义';
+        return;
+      }
+      if (presetMode === 'pending') {
+        el.innerText = `已选择${preset.label}（未应用）`;
+        return;
+      }
+      el.innerText = `当前：预设·${preset.label}`;
+    }
+
+    function applyPreset() {
+      const preset = getPreset();
+      if (!preset) return;
+      const setVal = (id, value) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.value = String(value);
+      };
+      setVal('sliceMsInput', preset.slice_ms);
+      setVal('dropVisibleMsInput', preset.drop_visible_ms);
+      setVal('dropsPerSecInput', '');
+      setVal('dropsPerSliceInput', preset.drops_per_slice);
+      setVal('bombsPerSliceInput', preset.bombs_per_slice);
+      setVal('bigsPerSliceInput', preset.bigs_per_slice);
+      setVal('emptyPerSliceInput', preset.empty_per_slice);
+      setVal('scoreTotalInput', preset.score_total);
+      setVal('bombPenaltyInput', preset.bomb_penalty);
+      setVal('bigMultiplierInput', preset.big_multiplier);
+      setVal('maxSpeedInput', preset.max_speed);
+      presetMode = 'preset';
+      lastDifficultyKey = document.getElementById('difficultySelect')?.value || lastDifficultyKey;
+      updatePresetStatus();
+    }
+
+    function markCustom() {
+      if (presetMode === 'custom') return;
+      presetMode = 'custom';
+      updatePresetStatus();
+    }
+
+    document.getElementById('difficultySelect')?.addEventListener('change', () => {
+      refreshDifficultyHint();
+      const select = document.getElementById('difficultySelect');
+      if (!select) return;
+      if (presetMode === 'custom') {
+        const ok = confirm('当前参数已被手动修改，切换难度会覆盖自定义配置，是否继续？');
+        if (!ok) {
+          select.value = lastDifficultyKey;
+          refreshDifficultyHint();
+          updatePresetStatus();
+          return;
+        }
+      }
+      applyPreset();
+    });
+
+    document.getElementById('applyPresetBtn')?.addEventListener('click', () => {
+      applyPreset();
+    });
+
+    [
+      'title',
+      'totalPool',
+      'luckyRatioInput',
+      'baseRatioInput',
+      'duration',
+      'countdownInput',
+      'dropVisibleMsInput',
+      'dropsPerSecInput',
+      'sliceMsInput',
+      'dropsPerSliceInput',
+      'bombsPerSliceInput',
+      'bigsPerSliceInput',
+      'emptyPerSliceInput',
+      'scoreTotalInput',
+      'bombPenaltyInput',
+      'bigMultiplierInput',
+      'maxSpeedInput',
+      'minAwardInput',
+      'maxAwardInput',
+      'tailTopNInput',
+      'rankSegmentsInput'
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', markCustom);
+      el.addEventListener('change', markCustom);
+    });
+
+    // =====================
+    // Auth
+    // =====================
+    async function adminLogin() {
+      const password = document.getElementById('adminPassword').value.trim();
+      if (!password) return;
+      const res = await fetch(`${apiBase}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.token) {
+        setToken(data.token);
+        document.getElementById('loginTip').innerText = '登录成功';
+        setConnStatus('已登录');
+        startPolling();
+      } else {
+        document.getElementById('loginTip').innerText = data.error || '登录失败';
+        setConnStatus('登录失败', false);
+      }
+    }
+
+    // =====================
+    // Round Actions
+    // =====================
+    async function createRound() {
+      const numOrZero = (id) => {
+        const el = document.getElementById(id);
+        if (!el) return 0;
+        const raw = (el.value || '').trim();
+        if (!raw) return 0;
+        const parsed = parseInt(raw, 10);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const sliceMsInput = numOrZero('sliceMsInput');
+      const dropsPerSec = numOrZero('dropsPerSecInput');
+      let dropsPerSlice = numOrZero('dropsPerSliceInput');
+      if (dropsPerSec > 0) {
+        const sliceMs = sliceMsInput > 0 ? sliceMsInput : 1000;
+        dropsPerSlice = Math.max(1, Math.round((dropsPerSec * sliceMs) / 1000));
+      }
+      let bombsPerSlice = numOrZero('bombsPerSliceInput');
+      let bigsPerSlice = numOrZero('bigsPerSliceInput');
+      let emptyPerSlice = numOrZero('emptyPerSliceInput');
+      const dropCount = Math.max(0, dropsPerSlice);
+      if (dropCount > 0 && bombsPerSlice >= dropCount) {
+        bombsPerSlice = Math.max(0, dropCount - 1);
+      }
+      const maxNonBomb = Math.max(0, dropCount - bombsPerSlice);
+      if (bigsPerSlice > maxNonBomb) {
+        bigsPerSlice = maxNonBomb;
+      }
+      if (emptyPerSlice > maxNonBomb - bigsPerSlice) {
+        emptyPerSlice = Math.max(0, maxNonBomb - bigsPerSlice);
+      }
+      const bombsInput = document.getElementById('bombsPerSliceInput');
+      if (bombsInput && bombsInput.value && bombsPerSlice !== numOrZero('bombsPerSliceInput')) {
+        bombsInput.value = String(bombsPerSlice);
+      }
+      const bigsInput = document.getElementById('bigsPerSliceInput');
+      if (bigsInput && bigsInput.value && bigsPerSlice !== numOrZero('bigsPerSliceInput')) {
+        bigsInput.value = String(bigsPerSlice);
+      }
+      const emptyInput = document.getElementById('emptyPerSliceInput');
+      if (emptyInput && emptyInput.value && emptyPerSlice !== numOrZero('emptyPerSliceInput')) {
+        emptyInput.value = String(emptyPerSlice);
+      }
+      const payload = {
+        title: document.getElementById('title').value || '红包雨',
+        total_pool: yuanToFen(document.getElementById('totalPool').value),
+        lucky_ratio: numOrZero('luckyRatioInput'),
+        base_ratio: numOrZero('baseRatioInput'),
+        tail_top_n: numOrZero('tailTopNInput'),
+        rank_segments: numOrZero('rankSegmentsInput'),
+        duration_sec: parseInt(document.getElementById('duration').value || '30', 10),
+        slice_ms: sliceMsInput,
+        drop_visible_ms: numOrZero('dropVisibleMsInput'),
+        drops_per_slice: dropsPerSlice,
+        bombs_per_slice: bombsPerSlice,
+        bigs_per_slice: bigsPerSlice,
+        empty_per_slice: emptyPerSlice,
+        big_multiplier: parseFloat(document.getElementById('bigMultiplierInput')?.value || '0'),
+        max_speed: parseFloat(document.getElementById('maxSpeedInput')?.value || '0'),
+        score_total: numOrZero('scoreTotalInput'),
+        bomb_penalty: numOrZero('bombPenaltyInput'),
+        min_award: yuanToFen(document.getElementById('minAwardInput')?.value || '0'),
+        max_award: yuanToFen(document.getElementById('maxAwardInput')?.value || '0'),
+      };
+      if (payload.lucky_ratio + payload.base_ratio > 100) {
+        document.getElementById('createResult').innerText = '幸运池比例 + 基础池比例 不能超过 100%';
+        return;
+      }
+      const res = await fetch(`${apiBase}/api/admin/rounds`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      document.getElementById('createResult').innerText = JSON.stringify(data);
+      if (data.id) {
+        currentRoundId = data.id;
+        setFollowCurrent(false);
+        loadBatches();
+        loadRounds();
+        refreshLeaderboard();
+        pollMetrics();
+      }
+    }
+
+    async function lockRound() {
+      if (!currentRoundId) return;
+      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/lock`, { method: 'POST', headers: adminHeaders() });
+      openLockModal();
+    }
+
+    async function startRound() {
+      if (!currentRoundId) return;
+      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/start`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ countdown_sec: parseInt(document.getElementById('countdownInput').value || '3', 10) })
+      });
+    }
+
+    async function drawRound() {
+      if (!currentRoundId) return;
+      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/draw`, { method: 'POST', headers: adminHeaders() });
+      loadBatches();
+    }
+
+    // =====================
+    // Whitelist
+    // =====================
+    async function addWhitelist() {
+      if (!currentRoundId) return;
+      const raw = document.getElementById('whitelistPhones').value;
+      const phones = raw.split(/[,\n\r]+/).map(v => v.trim()).filter(Boolean);
+      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/whitelist`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ phones })
+      });
+    }
+
+    async function importAllOnline() {
+      if (!currentRoundId) return;
+      const user_ids = onlineUserCache.map(item => item.user_id);
+      if (user_ids.length === 0) return;
+      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/whitelist`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ user_ids })
+      });
+      closeLockModal();
+    }
+
+    // =====================
+    // Lists & Rendering
+    // =====================
+    function renderOnlineList(containerId, list) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      if (!list || list.length === 0) {
+        el.innerHTML = '<div class="note">暂无在线用户</div>';
+        return;
+      }
+      el.innerHTML = list.map(item => {
+        return `<div class="list-item">
+      <div class="user-line">
+        ${renderAvatar(item)}
+        <div>${renderUserName(item)}</div>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    function renderLeaderboard(items) {
+      const el = document.getElementById('leaderboard');
+      if (!items || items.length === 0) {
+        el.innerHTML = '<div class="note">暂无数据</div>';
+        return;
+      }
+      el.innerHTML = items.map((item, idx) => {
+        return `<div class="list-item">
+      <div class="user-line">
+        ${renderAvatar(item)}
+        <div>#${idx + 1} ${renderUserName(item)}</div>
+      </div>
+      <div style="color:var(--accent); font-weight:600;">${item.score}</div>
+    </div>`;
+      }).join('');
+    }
+
+    function renderRoundSummary(round) {
+      const el = document.getElementById('roundSummary');
+      if (!round) {
+        el.innerHTML = '<div class="note">暂无</div>';
+        return;
+      }
+      el.innerHTML = `
+    <div class="list-item"><span>奖池</span><span>${(round.total_pool / 100).toFixed(2)} 元</span></div>
+    <div class="list-item"><span>时长</span><span>${round.duration_sec}s</span></div>
+    <div class="list-item"><span>切片</span><span>${round.slice_ms}ms</span></div>
+    <div class="list-item"><span>显示时长</span><span>${round.drop_visible_ms || 0}ms</span></div>
+    <div class="list-item"><span>每片红包</span><span>${round.drops_per_slice}</span></div>
+    <div class="list-item"><span>每片炸弹</span><span>${round.bombs_per_slice}</span></div>
+    <div class="list-item"><span>每片大红包</span><span>${round.bigs_per_slice || 0}</span></div>
+    <div class="list-item"><span>每片空包</span><span>${round.empty_per_slice || 0}</span></div>
+    <div class="list-item"><span>大红包倍率</span><span>${round.big_multiplier || 2}</span></div>
+    <div class="list-item"><span>最大速度</span><span>${round.max_speed || 1.0}</span></div>
+    <div class="list-item"><span>每人幸运分</span><span>${round.score_total}</span></div>
+    <div class="list-item"><span>炸弹扣分</span><span>${round.bomb_penalty}</span></div>
+    <div class="list-item"><span>最小中奖</span><span>${round.min_award ? (round.min_award / 100).toFixed(2) + ' 元' : '--'}</span></div>
+    <div class="list-item"><span>最大中奖</span><span>${round.max_award ? (round.max_award / 100).toFixed(2) + ' 元' : '--'}</span></div>
+    <div class="list-item"><span>幸运池比例</span><span>${round.lucky_ratio || 0}%</span></div>
+    <div class="list-item"><span>基础池比例</span><span>${round.base_ratio || 0}%</span></div>
+    <div class="list-item"><span>尾差补偿</span><span>前 ${round.tail_top_n || 0} 名</span></div>
+    <div class="list-item"><span>排名分段</span><span>${round.rank_segments || 0}</span></div>
+  `;
+    }
+
+    function withdrawStatusLabel(status) {
+      const map = {
+        PENDING: '待处理',
+        WAITING_FUNDS: '余额不足等待',
+        PROCESSING: '处理中',
+        PAID: '已到账',
+        FAILED: '失败',
+        REFUNDED: '已退款'
+      };
+      return map[status] || status || '--';
+    }
+
+    function withdrawStatusClass(status) {
+      if (status === 'PAID') return 'ok';
+      if (status === 'FAILED' || status === 'REFUNDED') return 'danger';
+      if (status === 'PROCESSING' || status === 'WAITING_FUNDS') return 'warn';
+      return '';
+    }
+
+    function renderWithdraws(items) {
+      const el = document.getElementById('withdrawListAdmin');
+      if (!el) return;
+      if (!items || items.length === 0) {
+        el.innerHTML = '<div class="note">暂无提现记录</div>';
+        return;
+      }
+      el.innerHTML = items.map(item => {
+        const amount = ((item.amount || 0) / 100).toFixed(2);
+        const status = item.status || '';
+        const statusText = withdrawStatusLabel(status);
+        const statusClass = withdrawStatusClass(status);
+        const name = escapeHTML(item.alipay_name || '');
+        const account = escapeHTML(maskKeep(item.alipay_account || '', 3, 3));
+        const idCard = escapeHTML(maskKeep(item.id_card || '', 3, 4));
+        const aliStatus = item.alipay_status ? `支付宝状态：${escapeHTML(item.alipay_status)}` : '';
+        const failReason = item.fail_reason ? `失败原因：${escapeHTML(item.fail_reason)}` : '';
+        const createdAt = formatTime(item.created_at);
+        const paidAt = item.paid_at ? formatTime(item.paid_at) : '';
+        const canTransfer = ['PENDING', 'PROCESSING', 'FAILED'].includes(status);
+        const actions = [];
+        if (canTransfer) {
+          actions.push(`<button class="btn secondary" onclick="transferWithdraw(${item.id})">打款</button>`);
+        }
+        actions.push(`<button class="btn ghost" onclick="syncWithdraw(${item.id})">同步</button>`);
+        return `<div class="list-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <div class="user-line">
+              ${renderAvatar(item)}
+              <div>#${item.id} · ${renderUserName(item)} · ¥${amount}</div>
+            </div>
+            <span class="pill ${statusClass}">${statusText}</span>
+          </div>
+          <div class="meta">收款：${name} ${account} | ${idCard}</div>
+          <div class="meta">创建：${createdAt}${paidAt ? ` | 到账：${paidAt}` : ''}</div>
+          ${aliStatus || failReason ? `<div class="meta">${aliStatus}${aliStatus && failReason ? ' · ' : ''}${failReason}</div>` : ''}
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">${actions.join('')}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function prettyPrintRaw(raw) {
+      if (!raw) return '';
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+          return raw;
+        }
+      }
+      try {
+        return JSON.stringify(raw, null, 2);
+      } catch (e) {
+        return String(raw);
+      }
+    }
+
+    function renderAccountSummary(data) {
+      const el = document.getElementById('alipayAccountSummary');
+      if (!el) return;
+      if (!data || typeof data !== 'object') {
+        el.innerHTML = '<div class="note">暂无账户数据</div>';
+        return;
+      }
+      const available = data.available_amount || '--';
+      const freeze = data.freeze_amount || '--';
+      el.innerHTML = `
+        <div class="list-item"><span>可用余额</span><span>${available}</span></div>
+        <div class="list-item"><span>冻结金额</span><span>${freeze}</span></div>
+      `;
+    }
+
+    function updateMetrics(data) {
+      setConnStatus('在线', true);
+      const online = data.online_users || 0;
+      document.getElementById('onlineCount').innerText = online;
+      document.getElementById('onlineBar').style.width = Math.min(100, online / 10) + '%';
+
+      if (data.round) {
+        const shouldUpdate = followCurrent || (currentRoundId && data.round.id === currentRoundId);
+        if (shouldUpdate) {
+          if (followCurrent) {
+            currentRoundId = data.round.id;
+          }
+          currentRoundConfig = data.round;
+          roundStatusCache = data.round.status || '';
+          document.getElementById('roundTitle').innerText = data.round.title || `轮次#${data.round.id}`;
+          document.getElementById('roundMeta').innerText = `状态：${roundStatusLabel(data.round.status)} | 奖池：${(data.round.total_pool / 100).toFixed(2)}元`;
+          if (data.time_left_ms !== undefined) {
+            let leftSec = Math.ceil(data.time_left_ms / 1000);
+            if (data.round.status === 'COUNTDOWN' && data.round.start_at && data.server_time) {
+              leftSec = Math.max(0, Math.ceil((data.round.start_at - data.server_time) / 1000));
+            }
+            document.getElementById('timeLeft').innerText = `${leftSec}s`;
+          }
+          renderRoundSummary(data.round);
+          updateFlowHint(data.round);
+        }
+      } else {
+        roundStatusCache = '';
+        updateFlowHint(null);
+      }
+
+      const qpsAvg = data.qps_avg || 0;
+      const qps1s = data.qps_1s || 0;
+      document.getElementById('qpsValue').innerText = qpsAvg;
+      document.getElementById('qpsDetail').innerText = `${qpsAvg} / ${qps1s}`;
+      const avgEl = document.getElementById('qpsAvgText');
+      const peakEl = document.getElementById('qpsPeakText');
+      if (avgEl) avgEl.innerText = qpsAvg;
+      if (peakEl) peakEl.innerText = qps1s;
+      pushSeries(qpsSeries, qpsAvg);
+      drawSparkline('qpsChart', qpsSeries, '#f4d35e');
+    }
+
+    function updateLiveMetrics(data) {
+      lastLiveMetrics = data || null;
+      const round = data.round || null;
+      if (round && round.id) {
+        const prevId = liveRoundId;
+        liveRoundId = round.id;
+        liveRoundConfig = round;
+        liveRoundStatus = round.status || '';
+        liveScoreUsers = typeof data.score_users === 'number' ? data.score_users : liveScoreUsers;
+        updateBigScreen(data);
+        if (prevId !== liveRoundId) {
+          liveLeaderboardCache = [];
+          lastNonEmptyLiveLeaderboard = [];
+          renderBigLeaderboard([], liveRoundStatus);
+          refreshLiveLeaderboard();
+        }
+      } else {
+        liveRoundId = null;
+        liveRoundConfig = null;
+        liveRoundStatus = '';
+        liveLeaderboardCache = [];
+        liveScoreUsers = 0;
+        lastSummaryKey = '';
+        updateBigScreen({ round: null, server_time: data.server_time });
+      }
+    }
+
+    function drawSparkline(canvasId, data, color) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const parentWidth = canvas.parentElement?.clientWidth || 0;
+      if (parentWidth <= 0) return;
+      const w = canvas.width = parentWidth - 24;
+      const h = canvas.height = 110;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      if (data.length === 0) return;
+      const max = Math.max(...data, 1);
+      const min = Math.min(...data, 0);
+      const range = max - min || 1;
+      ctx.beginPath();
+      data.forEach((v, i) => {
+        const x = (i / (data.length - 1 || 1)) * w;
+        const y = h - ((v - min) / range) * h;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    // =====================
+    // Data Fetching
+    // =====================
+    async function loadBatches() {
+      const res = await fetch(`${apiBase}/api/admin/award_batches`, { headers: adminHeaders() });
+      const data = await res.json();
+      const list = data.items || [];
+      const el = document.getElementById('batchList');
+      if (!list.length) {
+        el.innerHTML = '<div class="note">暂无批次</div>';
+        return;
+      }
+      el.innerHTML = list.map(item => {
+        const statusLabel = batchStatusLabel(item.status);
+        const statusClass = batchStatusClass(item.status);
+        const pool = ((item.total_pool || 0) / 100).toFixed(2);
+        const createdAt = formatTime(item.created_at);
+        const canConfirm = item.status === 'PENDING_CONFIRM';
+        return `<div class="list-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
+      <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+        <div>批次#${item.id} · 轮次#${item.round_id}</div>
+        <span class="status-tag ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="meta">奖池：${pool} 元 ${createdAt !== '--' ? `| 创建：${createdAt}` : ''}</div>
+      ${canConfirm ? `<button class="btn ghost" onclick="confirmBatch(${item.id})">确认入账</button>` : ''}
+    </div>`;
+      }).join('');
+    }
+
+    async function confirmBatch(id) {
+      await fetch(`${apiBase}/api/admin/award_batches/${id}/confirm`, { method: 'POST', headers: adminHeaders() });
+      loadBatches();
+    }
+
+    async function loadRounds() {
+      const res = await fetch(`${apiBase}/api/admin/rounds`, { headers: adminHeaders() });
+      const data = await res.json();
+      const list = data.items || [];
+      const el = document.getElementById('roundList');
+      if (!list.length) {
+        el.innerHTML = '<div class="note">暂无历史轮次</div>';
+        return;
+      }
+      el.innerHTML = list.map(item => {
+        const statusLabel = roundStatusLabel(item.status);
+        const statusClass = roundStatusClass(item.status);
+        return `<div class="list-item">
+      <div>#${item.id} ${escapeHTML(item.title || '红包雨')} <span class="status-tag ${statusClass}">${statusLabel}</span></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn ghost" onclick='selectRound(${item.id})'>查看</button>
+        <button class="btn ghost" onclick='exportRound(${item.id})'>导出</button>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    async function exportRound(id) {
+      const btnText = `导出轮次#${id}`;
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${id}/export`, { headers: adminHeaders() });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || '导出失败');
+        }
+        const blob = await res.blob();
+        const disposition = res.headers.get('content-disposition') || '';
+        let filename = `round_${id}.csv`;
+        const match = disposition.match(/filename="?([^"]+)"?/i);
+        if (match && match[1]) filename = match[1];
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert(`${btnText}失败：${e.message || '未知错误'}`);
+      }
+    }
+
+    function setWithdrawSwitchUI(enabled) {
+      const input = document.getElementById('withdrawSwitch');
+      const text = document.getElementById('withdrawSwitchText');
+      const hint = document.getElementById('withdrawSwitchHint');
+      if (input) input.checked = !!enabled;
+      if (text) text.innerText = enabled ? '已开启' : '已关闭';
+      if (hint) hint.innerText = enabled ? '用户端可提交提现申请。' : '已暂停提现申请（用户端将无法提交）。';
+    }
+
+    async function loadWithdrawSwitch() {
+      const input = document.getElementById('withdrawSwitch');
+      if (!input) return;
+      try {
+        const res = await fetch(`${apiBase}/api/admin/withdraw_switch`, { headers: adminHeaders() });
+        const data = await res.json();
+        setWithdrawSwitchUI(!!data.enabled);
+      } catch (e) {
+        setWithdrawSwitchUI(false);
+      }
+    }
+
+    async function updateWithdrawSwitch(enabled) {
+      try {
+        const res = await fetch(`${apiBase}/api/admin/withdraw_switch`, {
+          method: 'POST',
+          headers: adminHeaders(),
+          body: JSON.stringify({ enabled: !!enabled })
+        });
+        const data = await res.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        setWithdrawSwitchUI(!!data.enabled);
+      } catch (e) {
+        alert(e.message || '更新提现开关失败');
+        loadWithdrawSwitch();
+      }
+    }
+
+    async function loadWithdrawsAdmin(reset = false) {
+      if (reset) {
+        withdrawOffset = 0;
+      }
+      const status = document.getElementById('withdrawStatusFilter')?.value || '';
+      const limit = parseInt(document.getElementById('withdrawLimit')?.value || '20', 10);
+      const url = `${apiBase}/api/admin/withdraws?status=${encodeURIComponent(status)}&limit=${limit}&offset=${withdrawOffset}`;
+      const res = await fetch(url, { headers: adminHeaders() });
+      const data = await res.json();
+      if (data.error) {
+        const meta = document.getElementById('withdrawMeta');
+        if (meta) meta.innerText = data.error;
+        const queueHint = document.getElementById('withdrawQueueHint');
+        if (queueHint) queueHint.innerText = data.error;
+        renderWithdraws([]);
+        return;
+      }
+      const items = data.items || [];
+      withdrawLastCount = items.length;
+      renderWithdraws(items);
+      const meta = document.getElementById('withdrawMeta');
+      if (meta) {
+        meta.innerText = `已加载 ${items.length} 条 | offset ${withdrawOffset}`;
+      }
+      const queueHint = document.getElementById('withdrawQueueHint');
+      if (queueHint) {
+        const statusLabel = withdrawStatusLabel(status) || '全部';
+        queueHint.innerText = `当前筛选：${statusLabel} · 本页 ${items.length} 条`;
+      }
+    }
+
+    function prevWithdrawPage() {
+      const limit = parseInt(document.getElementById('withdrawLimit')?.value || '20', 10);
+      withdrawOffset = Math.max(0, withdrawOffset - limit);
+      loadWithdrawsAdmin();
+    }
+
+    function nextWithdrawPage() {
+      const limit = parseInt(document.getElementById('withdrawLimit')?.value || '20', 10);
+      if (withdrawLastCount < limit) return;
+      withdrawOffset += limit;
+      loadWithdrawsAdmin();
+    }
+
+    async function transferWithdraw(id) {
+      await fetch(`${apiBase}/api/admin/withdraws/${id}/transfer`, {
+        method: 'POST',
+        headers: adminHeaders()
+      });
+      loadWithdrawsAdmin();
+    }
+
+    async function syncWithdraw(id) {
+      await fetch(`${apiBase}/api/admin/withdraws/${id}/sync`, {
+        method: 'POST',
+        headers: adminHeaders()
+      });
+      loadWithdrawsAdmin();
+    }
+
+    async function queryAlipayAccount() {
+      const userId = document.getElementById('alipayUserIdInput')?.value?.trim() || '';
+      const accountType = document.getElementById('alipayAccountTypeInput')?.value?.trim() || '';
+      const url = `${apiBase}/api/admin/alipay/account?alipay_user_id=${encodeURIComponent(userId)}&account_type=${encodeURIComponent(accountType)}`;
+      const res = await fetch(url, { headers: adminHeaders() });
+      const data = await res.json();
+      if (data.error) {
+        const box = document.getElementById('alipayAccountResult');
+        if (box) box.value = data.error;
+        renderAccountSummary(null);
+        return;
+      }
+      const raw = data.raw || data;
+      const box = document.getElementById('alipayAccountResult');
+      if (box) box.value = prettyPrintRaw(raw);
+      let parsed = raw;
+      if (typeof raw === 'string') {
+        try {
+          parsed = JSON.parse(raw);
+        } catch (e) {
+          parsed = null;
+        }
+      }
+      renderAccountSummary(parsed);
+    }
+
+    async function queryAlipayQuota() {
+      const productCode = document.getElementById('alipayProductCodeInput')?.value?.trim() || '';
+      const bizScene = document.getElementById('alipayBizSceneInput')?.value?.trim() || '';
+      const url = `${apiBase}/api/admin/alipay/quota?product_code=${encodeURIComponent(productCode)}&biz_scene=${encodeURIComponent(bizScene)}`;
+      const res = await fetch(url, { headers: adminHeaders() });
+      const data = await res.json();
+      const raw = data.raw || data;
+      const box = document.getElementById('alipayQuotaResult');
+      if (box) box.value = prettyPrintRaw(raw);
+    }
+
+    async function transferTest() {
+      const account = document.getElementById('alipayTestAccountInput')?.value?.trim() || '';
+      const name = document.getElementById('alipayTestNameInput')?.value?.trim() || '';
+      const amountYuan = document.getElementById('alipayTestAmountInput')?.value?.trim() || '';
+      const sceneType = document.getElementById('alipaySceneInfoTypeInput')?.value?.trim() || '';
+      const sceneContent = document.getElementById('alipaySceneInfoContentInput')?.value?.trim() || '';
+      const sceneReportRaw = document.getElementById('alipaySceneReportJson')?.value?.trim() || '';
+      const box = document.getElementById('alipayTransferResult');
+      if (!account || !name) {
+        if (box) box.value = '请填写收款账号与姓名';
+        return;
+      }
+      let reportInfos = [];
+      if (sceneReportRaw) {
+        try {
+          const parsed = JSON.parse(sceneReportRaw);
+          if (Array.isArray(parsed)) {
+            reportInfos = parsed;
+          } else {
+            throw new Error('转账场景上报信息需要为 JSON 数组');
+          }
+        } catch (e) {
+          if (box) box.value = e.message || '转账场景上报信息 JSON 格式错误';
+          return;
+        }
+      } else if (sceneType && sceneContent) {
+        reportInfos = [{ info_type: sceneType, info_content: sceneContent }];
+      }
+      const url = `${apiBase}/api/admin/alipay/transfer_test`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ payee_account: account, payee_name: name, amount_yuan: amountYuan, transfer_scene_report_infos: reportInfos })
+      });
+      const data = await res.json();
+      if (box) box.value = prettyPrintRaw(data);
+    }
+
+    async function selectRound(id) {
+      currentRoundId = id;
+      setFollowCurrent(false);
+      await refreshLeaderboard();
+      await pollMetrics();
+    }
+
+    async function loadOnlineUsers(containerId = 'onlineUsers') {
+      const res = await fetch(`${apiBase}/api/admin/online_users`, { headers: adminHeaders() });
+      const data = await res.json();
+      const list = data.items || [];
+      onlineUserCache = list;
+      renderOnlineList(containerId, list);
+    }
+
+    async function loadLeaderboard(limit = 10) {
+      if (!currentRoundId) return;
+      leaderboardLimit = limit;
+      const res = await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/leaderboard?limit=${limit}`, { headers: adminHeaders() });
+      const data = await res.json();
+      const items = data.items || [];
+      leaderboardCache = items;
+      renderLeaderboard(items.slice(0, 10));
+      const topScore = items.length ? items[0].score : 0;
+      pushSeries(scoreSeries, topScore);
+      drawSparkline('scoreChart', scoreSeries, '#37e2c9');
+    }
+
+    function desiredLeaderboardLimit() {
+      if (['READY_DRAW', 'DRAWING', 'PENDING_CONFIRM', 'FINISHED'].includes(roundStatusCache)) {
+        return 100;
+      }
+      return 10;
+    }
+
+    async function refreshLeaderboard() {
+      const limit = desiredLeaderboardLimit();
+      await loadLeaderboard(limit);
+    }
+
+    function desiredLiveLeaderboardLimit() {
+      const wanted = liveScoreUsers || 0;
+      const base = Math.max(10, wanted);
+      return Math.min(base, 1000);
+    }
+
+    async function loadLiveLeaderboard(limit = 10) {
+      if (!liveRoundId) {
+        liveLeaderboardCache = [];
+        renderBigLeaderboard([], liveRoundStatus);
+        return;
+      }
+      liveLeaderboardLimit = limit;
+      const res = await fetch(`${apiBase}/api/admin/rounds/${liveRoundId}/leaderboard?limit=${limit}`, { headers: adminHeaders() });
+      const data = await res.json();
+      const items = data.items || [];
+      const isFinal = ['READY_DRAW', 'DRAWING', 'PENDING_CONFIRM', 'FINISHED'].includes(liveRoundStatus);
+      if (items.length > 0) {
+        lastNonEmptyLiveLeaderboard = items;
+      }
+      const effectiveItems = (items.length === 0 && isFinal && lastNonEmptyLiveLeaderboard.length > 0)
+        ? lastNonEmptyLiveLeaderboard
+        : items;
+      if (!leaderboardChanged(liveLeaderboardCache, effectiveItems)) {
+        return;
+      }
+      liveLeaderboardCache = effectiveItems;
+      const lanesEl = document.getElementById('raceLanes');
+      const prevScroll = lanesEl ? lanesEl.scrollTop : 0;
+      renderBigLeaderboard(effectiveItems, liveRoundStatus);
+      if (lanesEl) {
+        lanesEl.scrollTop = prevScroll;
+      }
+    }
+
+    async function refreshLiveLeaderboard() {
+      const limit = desiredLiveLeaderboardLimit();
+      await loadLiveLeaderboard(limit);
+    }
+
+    async function pollMetrics() {
+      let url = `${apiBase}/api/admin/metrics`;
+      if (!followCurrent && currentRoundId) {
+        url += `?round_id=${currentRoundId}`;
+      }
+      const res = await fetch(url, { headers: adminHeaders() });
+      const data = await res.json();
+      updateMetrics(data);
+    }
+
+    async function pollLiveMetrics() {
+      const res = await fetch(`${apiBase}/api/admin/metrics`, { headers: adminHeaders() });
+      const data = await res.json();
+      updateLiveMetrics(data);
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollMetrics().then(refreshLeaderboard);
+      pollLiveMetrics().then(refreshLiveLeaderboard);
+      loadBatches();
+      loadRounds();
+      loadOnlineUsers();
+      loadWithdrawsAdmin(true);
+      loadWithdrawSwitch();
+      if (!leaderboardTimer) {
+        leaderboardTimer = setInterval(async () => {
+          if (leaderboardLock) return; // 上一次请求未完成，跳过
+          leaderboardLock = true;
+          try {
+            await refreshLiveLeaderboard();
+            await refreshLeaderboard();
+          } finally {
+            leaderboardLock = false;
+          }
+        }, 300);
+      }
+      pollTimer = setInterval(async () => {
+        if (pollLock) return; // 上一次请求未完成，跳过
+        pollLock = true;
+        try {
+          await pollLiveMetrics();
+          await pollMetrics();
+          if (!onlineUsersLock) {
+            onlineUsersLock = true;
+            loadOnlineUsers().finally(() => { onlineUsersLock = false; });
+          }
+          withdrawTick += 1;
+          if (withdrawTick % 6 === 0 && !withdrawsLock) {
+            withdrawsLock = true;
+            loadWithdrawsAdmin().finally(() => { withdrawsLock = false; });
+          }
+        } finally {
+          pollLock = false;
+        }
+      }, 2000);
+    }
+
+    (function initDifficultyState() {
+      const select = document.getElementById('difficultySelect');
+      if (select && select.value) {
+        lastDifficultyKey = select.value;
+      }
+    })();
+
+    // =====================
+    // Modals
+    // =====================
+    function openLockModal() {
+      const modal = document.getElementById('lockModal');
+      modal.classList.add('active');
+      loadOnlineUsers('lockOnlineUsers');
+    }
+
+    function closeLockModal() {
+      const modal = document.getElementById('lockModal');
+      modal.classList.remove('active');
+    }
+
+    // =====================
+    // Clipboard
+    // =====================
+    function copyConfig() {
+      if (!currentRoundConfig) return;
+      const cfg = {
+        title: currentRoundConfig.title,
+        total_pool: currentRoundConfig.total_pool,
+        duration_sec: currentRoundConfig.duration_sec,
+        slice_ms: currentRoundConfig.slice_ms,
+        drop_visible_ms: currentRoundConfig.drop_visible_ms || 0,
+        drops_per_slice: currentRoundConfig.drops_per_slice,
+        bombs_per_slice: currentRoundConfig.bombs_per_slice,
+        bigs_per_slice: currentRoundConfig.bigs_per_slice || 0,
+        empty_per_slice: currentRoundConfig.empty_per_slice || 0,
+        big_multiplier: currentRoundConfig.big_multiplier || 2,
+        max_speed: currentRoundConfig.max_speed || 1.0,
+        score_total: currentRoundConfig.score_total,
+        bomb_penalty: currentRoundConfig.bomb_penalty,
+        min_award: currentRoundConfig.min_award,
+        max_award: currentRoundConfig.max_award,
+        lucky_ratio: currentRoundConfig.lucky_ratio,
+        base_ratio: currentRoundConfig.base_ratio,
+        tail_top_n: currentRoundConfig.tail_top_n,
+        rank_segments: currentRoundConfig.rank_segments
+      };
+      navigator.clipboard.writeText(JSON.stringify(cfg, null, 2));
+    }
+
+    // =====================
+    // System Reset
+    // =====================
+    async function resetAllData() {
+      const secret = document.getElementById('initSecretInput')?.value?.trim();
+      const resultEl = document.getElementById('resetResult');
+      if (!secret) {
+        resultEl.innerHTML = '<span style="color:#e74c3c;">请输入初始化密钥</span>';
+        return;
+      }
+      if (!confirm('⚠️ 确定要清空所有数据吗？此操作不可撤销！\\n\\n将清空：用户、轮次、评分、钱包、提现记录等所有数据。')) {
+        return;
+      }
+      if (!confirm('🚨 再次确认：这将删除所有数据并重置自增ID，确定继续？')) {
+        return;
+      }
+      resultEl.innerHTML = '<span style="color:#3498db;">正在清空数据...</span>';
+      try {
+        const res = await fetch(`${apiBase}/api/admin/init/reset`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Init-Secret': secret
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          resultEl.innerHTML = `<span style="color:#e74c3c;">失败：${data.error || '未知错误'}</span>`;
+          return;
+        }
+        resultEl.innerHTML = '<span style="color:#27ae60;">✅ 数据已清空！所有表已重置。</span>';
+        document.getElementById('initSecretInput').value = '';
+        // 刷新页面数据
+        loadRounds();
+        loadBatches();
+        loadOnlineUsers();
+        loadWithdrawsAdmin(true);
+      } catch (e) {
+        resultEl.innerHTML = `<span style="color:#e74c3c;">请求失败：${e.message}</span>`;
+      }
+    }
+
+    // =====================
+    // Init
+    // =====================
+    window.addEventListener('load', () => {
+      initTabs();
+      refreshDifficultyHint();
+      applyPreset();
+      updateRatioHint();
+      document.getElementById('luckyRatioInput')?.addEventListener('input', updateRatioHint);
+      document.getElementById('baseRatioInput')?.addEventListener('input', updateRatioHint);
+      document.getElementById('withdrawStatusFilter')?.addEventListener('change', () => loadWithdrawsAdmin(true));
+      document.getElementById('withdrawLimit')?.addEventListener('change', () => loadWithdrawsAdmin(true));
+      document.getElementById('withdrawSwitch')?.addEventListener('change', (e) => updateWithdrawSwitch(e.target.checked));
+      updateFlowHint(null);
+      if (getToken()) {
+        setConnStatus('已登录');
+        startPolling();
+      }
+    });
+  </script>
+</body>
+
+</html>

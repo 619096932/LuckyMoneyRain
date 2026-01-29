@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的资金</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: radial-gradient(circle at 50% 20%, #9b111e 0%, #3f0006 100%);
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-yellow-100">
+    <div class="max-w-md mx-auto px-4 py-6">
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-yellow-200">我的资金</h1>
+            <a href="/" class="text-sm text-yellow-200/70">返回游戏</a>
+        </div>
+
+        <div id="loginTip" class="mt-6 hidden bg-black/40 border border-yellow-500/30 rounded-xl p-4 text-sm">
+            请先登录，再查看资金信息。
+            <div class="mt-3">
+                <a href="/" class="text-yellow-200 underline underline-offset-4">去登录</a>
+            </div>
+        </div>
+
+        <div id="walletPanel" class="mt-6 bg-black/30 border border-yellow-500/30 rounded-2xl p-5">
+            <div class="text-xs text-yellow-200/60">可用余额（元）</div>
+            <div class="text-3xl font-bold font-mono mt-2" id="walletBalance">0.00</div>
+            <div class="text-xs text-yellow-200/60 mt-2" id="alipayInfo">未绑定支付宝</div>
+            <div class="flex gap-2 mt-4">
+                <a href="/withdraw"
+                    class="flex-1 text-center bg-yellow-400 text-red-900 font-bold py-2 rounded-lg">去提现</a>
+                <a href="/withdraw"
+                    class="flex-1 text-center bg-red-800/70 text-yellow-100 font-semibold py-2 rounded-lg">绑定/修改支付宝</a>
+            </div>
+            <div id="walletStatus" class="text-xs text-yellow-200/70 mt-2"></div>
+        </div>
+
+        <div class="mt-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-yellow-200/80">提现记录</h2>
+                <button onclick="loadWithdraws()" class="text-xs text-yellow-200/60">刷新</button>
+            </div>
+            <div id="withdrawList" class="mt-3 space-y-2 text-xs"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let authToken = localStorage.getItem('hb_token') || '';
+
+        function apiFetch(path, options = {}) {
+            const headers = options.headers || {};
+            if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+            headers['Content-Type'] = 'application/json';
+            return fetch(API_BASE + path, { ...options, headers });
+        }
+
+        function fenToYuan(fen) {
+            const val = Number(fen || 0);
+            return (val / 100).toFixed(2);
+        }
+
+        function formatTime(ms) {
+            if (!ms) return '-';
+            const d = new Date(ms);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function showLoginTip() {
+            document.getElementById('loginTip').classList.remove('hidden');
+            document.getElementById('walletPanel').classList.add('hidden');
+        }
+
+        function loadWallet() {
+            apiFetch('/api/user/wallet').then(res => res.json()).then(data => {
+                if (data.error) {
+                    document.getElementById('walletStatus').innerText = data.error;
+                    return;
+                }
+                document.getElementById('walletBalance').innerText = fenToYuan(data.balance || 0);
+                if (data.alipay && data.alipay.bound) {
+                    const idCardMasked = data.alipay.id_card_masked || '';
+                    const name = data.alipay.name || '';
+                    const baseText = name
+                        ? `${name} | ${data.alipay.account_masked}`
+                        : `${data.alipay.account_masked}`;
+                    document.getElementById('alipayInfo').innerText = idCardMasked
+                        ? `支付宝：${baseText} | ${idCardMasked}`
+                        : `支付宝：${baseText}`;
+                } else {
+                    document.getElementById('alipayInfo').innerText = '未绑定支付宝';
+                }
+            });
+        }
+
+        function loadWithdraws() {
+            apiFetch('/api/user/withdraws').then(res => res.json()).then(data => {
+                const list = data.items || [];
+                const el = document.getElementById('withdrawList');
+                if (list.length === 0) {
+                    el.innerHTML = '<div class="text-yellow-200/60">暂无提现记录</div>';
+                    return;
+                }
+                el.innerHTML = list.map(item => {
+                    const statusMap = {
+                        PENDING: '待处理',
+                        PROCESSING: '处理中',
+                        PAID: '已到账',
+                        FAILED: '失败',
+                        REFUNDED: '已退款'
+                    };
+                    const statusText = statusMap[item.status] || item.status;
+                    const timeText = item.paid_at ? formatTime(item.paid_at) : formatTime(item.created_at);
+                    const extra = item.fail_reason ? `失败原因：${item.fail_reason}` : (item.alipay_status ? `支付宝状态：${item.alipay_status}` : '');
+                    return `<div class="bg-black/30 rounded-lg px-3 py-2 border border-yellow-500/20">
+                        <div class="flex items-center justify-between">
+                            <div class="text-yellow-100 font-mono">¥${fenToYuan(item.amount)}</div>
+                            <div class="text-yellow-200/70">${statusText}</div>
+                        </div>
+                        <div class="text-yellow-200/50 text-[11px] mt-1">${item.account_masked}${item.id_card_masked ? ` | ${item.id_card_masked}` : ''}</div>
+                        ${extra ? `<div class="text-yellow-200/50 text-[11px] mt-1">${extra}</div>` : ''}
+                        <div class="text-yellow-200/40 text-[11px] mt-1">${timeText}</div>
+                    </div>`;
+                }).join('');
+            });
+        }
+
+        if (!authToken) {
+            showLoginTip();
+        } else {
+            loadWallet();
+            loadWithdraws();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,3157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>年会幸运红包雨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 30%, #a30008 0%, #4b0005 100%);
+            font-family: 'Noto Sans SC', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* 艺术字体 */
+        .art-font {
+            font-family: 'Ma Shan Zheng', cursive;
+        }
+
+        /* 动画关键帧 */
+        @keyframes pulse-gold {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+                transform: scale(1);
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(255, 215, 0, 0);
+                transform: scale(1.05);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+                transform: scale(1);
+            }
+        }
+
+        @keyframes float-up {
+            0% {
+                transform: translate3d(0, 0, 0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate3d(0, -50px, 0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes pop-in {
+            0% {
+                transform: translate3d(0, 0, 0) scale(0);
+                opacity: 0;
+            }
+
+            80% {
+                transform: translate3d(0, 0, 0) scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate3d(0, 0, 0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes swing {
+            0% {
+                transform: rotate(-5deg);
+            }
+
+            50% {
+                transform: rotate(5deg);
+            }
+
+            100% {
+                transform: rotate(-5deg);
+            }
+        }
+
+        /* 强力震动 */
+        @keyframes shake-hard {
+            0% {
+                transform: translate(1px, 1px) rotate(0deg);
+            }
+
+            10% {
+                transform: translate(-1px, -2px) rotate(-1deg);
+            }
+
+            20% {
+                transform: translate(-3px, 0px) rotate(1deg);
+            }
+
+            30% {
+                transform: translate(3px, 2px) rotate(0deg);
+            }
+
+            40% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
+
+            50% {
+                transform: translate(-1px, 2px) rotate(-1deg);
+            }
+
+            60% {
+                transform: translate(-3px, 1px) rotate(0deg);
+            }
+
+            70% {
+                transform: translate(3px, 1px) rotate(-1deg);
+            }
+
+            80% {
+                transform: translate(-1px, -1px) rotate(1deg);
+            }
+
+            90% {
+                transform: translate(1px, 2px) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(1px, -2px) rotate(-1deg);
+            }
+        }
+
+        .shake-screen {
+            animation: shake-hard 0.5s;
+        }
+
+        /* UI组件样式 */
+        .btn-start {
+            background: linear-gradient(to bottom, #ffd700, #ffaa00);
+            border: 4px solid #fff5c2;
+            color: #d80000;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+            animation: pulse-gold 2s infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-start .btn-progress {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 6px;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 245, 194, 0.9));
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+            transition: width 0.2s linear, opacity 0.2s linear;
+            opacity: 0;
+        }
+
+        .btn-start.btn-cooldown {
+            animation: none;
+        }
+
+        .btn-start:disabled {
+            cursor: not-allowed;
+        }
+
+        .modal-bg {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .score-float {
+            position: absolute;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 24px;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            animation: float-up 0.8s ease-out forwards;
+            z-index: 50;
+            will-change: transform, opacity;
+        }
+
+        .score-float-big {
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 0 0 10px #ff0000, 0 0 20px #ffd700;
+            z-index: 60;
+            will-change: transform, opacity;
+        }
+
+        canvas {
+            transform: translateZ(0);
+        }
+
+        /* iOS 优化：降低模糊与重绘负担 */
+        @supports (-webkit-touch-callout: none) {
+            .modal-bg {
+                backdrop-filter: none;
+            }
+
+            .btn-start {
+                animation: pulse-gold 2.6s infinite;
+            }
+
+            .shake-screen {
+                animation-duration: 0.35s;
+            }
+
+            .ui-layer,
+            #startScreen,
+            #resultScreen {
+                transform: translateZ(0);
+            }
+        }
+
+        /* 装饰元素 */
+        .lantern {
+            position: absolute;
+            top: -20px;
+            width: 120px;
+            z-index: 5;
+            transform-origin: top center;
+            animation: swing 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .lantern-left {
+            left: 20px;
+            animation-delay: 0s;
+        }
+
+        .lantern-right {
+            right: 20px;
+            animation-delay: 2s;
+        }
+
+        .cloud-bg {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23ffaa00' fill-opacity='0.2' d='M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: cover;
+            z-index: 1;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* 设置下拉框 */
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .setting-label {
+            color: rgba(254, 252, 232, 0.8);
+            font-size: 0.875rem;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .setting-select {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 2px solid #fbbf24;
+            color: #fbbf24;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            text-align: center;
+            appearance: none;
+            width: 100%;
+            min-width: 140px;
+        }
+
+        .setting-select option {
+            background-color: #4b0005;
+            color: #fbbf24;
+        }
+
+        /* 老虎机滚动数字样式 */
+        .rolling-number {
+            font-family: 'Courier New', Courier, monospace;
+            /* 等宽字体防止抖动 */
+            display: inline-block;
+            min-width: 3ch;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(6px);
+            color: rgba(254, 252, 232, 0.9);
+            font-size: 0.75rem;
+            max-width: 180px;
+            white-space: nowrap;
+            /* Allow shrinking */
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        .user-badge img {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            object-fit: cover;
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media (max-width: 480px) {
+            .user-badge {
+                max-width: 110px;
+                padding: 0.25rem 0.5rem;
+                gap: 0.25rem;
+            }
+
+            .user-badge img {
+                width: 24px;
+                height: 24px;
+            }
+
+            .setting-select {
+                min-width: 100px;
+            }
+        }
+
+        /* 音乐开关 */
+        #musicToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #musicToggle:active {
+            transform: scale(0.9);
+        }
+
+        .music-icon {
+            font-size: 20px;
+        }
+
+        .combo-container {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 50;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .combo-count {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #fbbf24;
+            /* amber-400 */
+            text-shadow: 0 4px 0 #b45309, 0 8px 10px rgba(0, 0, 0, 0.5);
+            font-family: 'Arial Black', sans-serif;
+            animation: comboPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .combo-label {
+            font-size: 1.5rem;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: bold;
+        }
+
+        @keyframes comboPop {
+            0% {
+                transform: scale(0.5);
+            }
+
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body id="mainBody">
+
+    <!-- 音乐开关 -->
+    <div id="musicToggle" class="interactive" onclick="SoundManager.toggleMute()">
+        <span class="music-icon" id="musicIcon">🔊</span>
+    </div>
+
+    <!-- 装饰：灯笼 -->
+    <div class="lantern lantern-left">
+        <svg viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="50" y1="0" x2="50" y2="20" stroke="#FFD700" stroke-width="2" />
+            <path d="M20 20 H80 L90 50 L80 100 H20 L10 50 L20 20Z" fill="#D91D2A" stroke="#FFD700" stroke-width="2" />
+            <rect x="25" y="100" width="50" height="10" fill="#B5121E" stroke="#FFD700" />
+            <text x="50" y="70" font-family="Ma Shan Zheng" font-size="40" fill="#FFD700" text-anchor="middle">福</text>
+            <path d="M30 110 L25 140 M40 110 L40 140 M50 110 L50 140 M60 110 L60 140 M70 110 L75 140" stroke="#FFD700"
+                stroke-width="2" />
+        </svg>
+    </div>
+    <div class="lantern lantern-right">
+        <svg viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="50" y1="0" x2="50" y2="20" stroke="#FFD700" stroke-width="2" />
+            <path d="M20 20 H80 L90 50 L80 100 H20 L10 50 L20 20Z" fill="#D91D2A" stroke="#FFD700" stroke-width="2" />
+            <rect x="25" y="100" width="50" height="10" fill="#B5121E" stroke="#FFD700" />
+            <text x="50" y="70" font-family="Ma Shan Zheng" font-size="40" fill="#FFD700" text-anchor="middle">春</text>
+            <path d="M30 110 L25 140 M40 110 L40 140 M50 110 L50 140 M60 110 L60 140 M70 110 L75 140" stroke="#FFD700"
+                stroke-width="2" />
+        </svg>
+    </div>
+
+    <!-- 装饰：底部祥云 -->
+    <div class="cloud-bg"></div>
+
+    <!-- 游戏画布 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <style>
+        .open-flap {
+            transform: rotateX(180deg);
+            z-index: 5 !important;
+        }
+
+        @keyframes shakePacket {
+            0% {
+                transform: scale(1.1) rotate(0deg);
+            }
+
+            25% {
+                transform: scale(1.1) rotate(-5deg);
+            }
+
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+
+            75% {
+                transform: scale(1.1) rotate(-5deg);
+            }
+
+            100% {
+                transform: scale(1.1) rotate(0deg);
+            }
+        }
+
+        .shake-packet {
+            animation: shakePacket 0.4s ease-in-out;
+        }
+    </style>
+    <!-- 欢迎红包弹窗 (Audio Trigger) -->
+    <div id="welcomeScreen"
+        class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md transition-opacity duration-500">
+        <!-- 光效 -->
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-600/20 rounded-full blur-[80px] animate-pulse">
+        </div>
+
+        <div id="packetWrapper"
+            class="relative w-64 h-80 cursor-pointer group scale-110 active:scale-95 transition-all duration-500"
+            onclick="enterGame()">
+            <!-- 红包主体 -->
+            <div
+                class="absolute inset-0 bg-[#c02c38] rounded-xl shadow-2xl overflow-hidden border-2 border-[#fcdba6]/20 z-0">
+                <!-- 顶部弧形 -->
+                <div
+                    class="absolute -top-[100px] left-1/2 -translate-x-1/2 w-[200%] h-[200px] bg-[#d9343d] rounded-[50%] shadow-md">
+                </div>
+                <!-- 花纹 -->
+                <div class="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+                    <div class="text-[100px] text-[#fcdba6] art-font leading-none">福</div>
+                </div>
+            </div>
+
+            <!-- 封口 -->
+            <div id="packetFlap"
+                class="absolute top-0 left-0 w-full h-[120px] bg-[#e63b46] rounded-b-[50%] shadow-lg z-10 origin-top transition-transform duration-700 ease-in-out backface-hidden">
+                <div
+                    class="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 bg-[#fcdba6] rounded-full flex items-center justify-center shadow-inner border-4 border-[#fff5c2]">
+                    <span class="text-[#c02c38] font-bold text-2xl art-font">開</span>
+                </div>
+            </div>
+
+            <!-- 提示文字 -->
+            <div id="clickHint" class="absolute -bottom-16 w-full text-center transition-opacity duration-300">
+                <p class="text-[#fcdba6] text-lg font-bold tracking-widest animate-bounce">点击开启</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI 层 -->
+    <div class="ui-layer flex flex-col justify-between p-2 md:p-4">
+
+        <!-- 顶部信息栏 -->
+        <div class="grid grid-cols-2 gap-2 items-start pt-8 md:pt-4 px-1 interactive opacity-0 transition-opacity duration-300"
+            id="topBar">
+
+            <!-- 左侧：用户信息 & 资金 -->
+            <div class="flex flex-col items-start gap-2">
+                <div id="userBadge"
+                    class="hidden flex items-center bg-black/40 rounded-full pl-1 pr-3 py-1 border border-yellow-500/30 backdrop-blur-sm max-w-[160px]">
+                    <img id="userAvatar"
+                        class="w-8 h-8 rounded-full border border-yellow-500/50 object-cover mr-2 hidden"
+                        alt="avatar" />
+                    <span id="userName" class="text-yellow-100 text-xs font-bold truncate">游客</span>
+                </div>
+                <!-- <a href="/wallet"
+                    class="flex items-center bg-black/40 rounded-full px-3 py-1 border border-emerald-500/30 backdrop-blur-sm">
+                    <span class="mr-1 text-lg">💰</span>
+                    <span class="text-emerald-200 text-xs font-bold">资金</span>
+                </a> -->
+            </div>
+
+            <!-- 右侧：数据统计 -->
+            <div class="flex flex-col items-end gap-2">
+                <div
+                    class="flex items-center bg-black/40 rounded-full px-3 py-1 border border-yellow-500/30 backdrop-blur-sm">
+                    <span class="text-yellow-400 text-base mr-2">🏁</span>
+                    <span class="text-white text-xl font-bold font-mono" id="scoreDisplay">0</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <div
+                        class="bg-black/40 rounded-full px-3 py-1 flex items-center border border-blue-400/30 backdrop-blur-sm">
+                        <span class="text-blue-300 text-sm mr-1">👥</span>
+                        <span class="text-white text-sm font-bold font-mono" id="rivalCount">0</span>
+                    </div>
+                    <div
+                        class="bg-black/40 rounded-full px-3 py-1 flex items-center border border-red-500/30 backdrop-blur-sm">
+                        <span class="text-white text-sm mr-1">⏰</span>
+                        <span class="text-white text-lg font-bold font-mono" id="timeDisplay">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combo Container -->
+        <div id="comboContainer" class="combo-container hidden">
+            <div id="comboCount" class="combo-count">0</div>
+            <div class="combo-label">COMBO!</div>
+        </div>
+
+        <!-- 开始/欢迎屏幕 -->
+        <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center z-20 interactive"
+            style="padding-bottom: 20vh;">
+            <div class="text-center animate-[pop-in_0.5s_ease-out] relative w-full max-w-lg px-4">
+                <!-- 光晕背景 -->
+                <div
+                    class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/30 rounded-full blur-[60px] -z-10">
+                </div>
+
+                <h1 class="art-font text-6xl md:text-8xl text-yellow-300 drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] mb-2">
+                    年会盛典</h1>
+                <h2 class="art-font text-5xl md:text-7xl text-white drop-shadow-[0_5px_5px_rgba(200,0,0,0.8)] mb-8">
+                    红包雨来袭</h2>
+
+                <div class="flex flex-col items-center gap-6 w-full">
+                    <button id="connectBtn" onclick="manualSync()"
+                        class="btn-start rounded-full px-16 py-5 text-3xl font-bold shadow-2xl transform transition active:scale-95 hover:scale-105 mb-4">
+                        <span id="connectBtnText">连接游戏</span>
+                        <span id="connectBtnProgress" class="btn-progress"></span>
+                    </button>
+
+                    <div id="loginPanel"
+                        class="w-full bg-black/20 p-4 rounded-xl backdrop-blur-sm border border-yellow-500/10">
+                        <div class="flex flex-col gap-3 mb-3">
+                            <label class="text-yellow-200/70 text-xs">手机号</label>
+                            <input id="phoneInput"
+                                class="w-full bg-black/30 text-white px-3 py-2 rounded-lg border border-yellow-500/30"
+                                placeholder="请输入手机号" />
+                            <label class="text-yellow-200/70 text-xs">验证码</label>
+                            <div class="grid grid-cols-[1fr_auto] gap-2">
+                                <input id="codeInput"
+                                    class="w-full min-w-0 bg-black/30 text-white px-3 py-2 rounded-lg border border-yellow-500/30"
+                                    placeholder="请输入验证码" />
+                                <button id="sendCodeBtn" onclick="sendCode()"
+                                    class="bg-yellow-500 text-red-900 px-4 py-2 rounded-lg font-bold whitespace-nowrap min-w-[96px]">发送</button>
+                            </div>
+                        </div>
+                        <button onclick="verifyCode()"
+                            class="w-full bg-yellow-400 text-red-900 font-bold py-2 rounded-lg tracking-wide mt-1">登录 /
+                            注册</button>
+                        <div id="loginStatus" class="text-yellow-200/70 text-xs mt-2 text-center"></div>
+                    </div>
+                    <a href="/wallet"
+                        class="text-sm text-yellow-200/70 underline underline-offset-4 hover:text-yellow-200">查看资金与提现</a>
+                </div>
+
+                <p id="startHint" class="text-yellow-200/60 mt-8 text-sm tracking-widest">请先登录并等待管理员开始</p>
+            </div>
+        </div>
+
+        <!-- 倒计时遮罩 -->
+        <div id="countdownScreen"
+            class="hidden absolute inset-0 flex items-center justify-center interactive z-50 bg-black/70 backdrop-blur-sm">
+            <div id="countdownNum"
+                class="art-font text-yellow-400 text-9xl font-bold drop-shadow-[0_0_20px_rgba(255,215,0,0.8)] scale-150 transition-all duration-1000">
+                3</div>
+        </div>
+
+        <!-- 结算弹窗 (包含老虎机滚分效果) -->
+        <div id="resultScreen"
+            class="hidden absolute inset-0 flex items-center justify-center interactive z-50 modal-bg">
+            <div
+                class="bg-gradient-to-b from-red-600 to-red-900 p-1 rounded-2xl shadow-2xl w-11/12 max-w-md transform scale-100 animate-[pop-in_0.4s_ease-out]">
+                <div class="bg-red-800 rounded-xl p-8 text-center border border-yellow-500/50 relative overflow-hidden">
+
+                    <!-- 光效背景 -->
+                    <div
+                        class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-400/20 blur-3xl rounded-full">
+                    </div>
+
+                    <h3 class="art-font text-5xl text-yellow-300 mb-6 drop-shadow-md mt-4" id="resultTitle">战绩揭晓中</h3>
+
+                    <div class="mb-8 bg-black/30 rounded-lg py-6 mx-2 border-2 border-yellow-600/30">
+                        <p class="text-red-200 text-sm mb-2 uppercase tracking-widest">本轮积攒到幸运值</p>
+                        <div class="text-6xl font-bold text-white font-mono tracking-tighter drop-shadow-sm">
+                            <span id="finalScore" class="rolling-number">0000</span>
+                        </div>
+                        <p class="text-red-200 text-xs mt-3 tracking-widest">中奖金额</p>
+                        <div class="text-2xl font-bold text-yellow-200">
+                            <span>¥</span><span id="finalAmount">0.00</span>
+                        </div>
+                        <p class="text-red-200 text-xs mt-3 tracking-widest">
+                            基础 <span id="finalBase">0.00</span> · 幸运 <span id="finalLucky">0.00</span> · 补差 <span
+                                id="finalBonus">0.00</span>
+                        </p>
+                    </div>
+
+                    <div class="space-y-4 px-4 pointer-events-none" id="resultButtons"
+                        style="opacity: 0; transition: opacity 0.5s;">
+                        <button onclick="restartGame()"
+                            class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-red-900 font-bold py-4 rounded-xl shadow-lg transition transform active:scale-95 border-b-4 border-yellow-600 text-lg">
+                            返回等待
+                        </button>
+                        <button onclick="backToHome()"
+                            class="w-full bg-transparent hover:bg-red-900/50 text-yellow-200/70 font-bold py-2 rounded-lg transition text-sm">
+                            返回主页设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 声音管理器
+         */
+        const SoundManager = {
+            ctx: null,
+            isMuted: false, // 默认开启声音
+            isPlayingBGM: false,
+            currentBGMType: 'NONE', // 'NONE', 'INTRO', 'GAME'
+            bgmOscillators: [],
+            bgmTimer: null,
+            bgmBuffer: null,     // Intro BGM audio buffer
+            gameBgmBuffer: null, // Game BGM audio buffer
+            bgmSource: null,     // Current playing source
+            bgmGain: null,       // Gain node for volume control
+            introBgmUrl: '',
+            gameBgmUrl: '',
+
+            init: function () {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.updateIcon();
+                    // Preload BGMs on first init
+                    this.preloadBGM();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+
+            setBgmUrls: function (introUrl, gameUrl) {
+                this.introBgmUrl = introUrl || '';
+                this.gameBgmUrl = gameUrl || '';
+                if (this.ctx) {
+                    this.preloadBGM();
+                }
+            },
+
+            getIntroBGMUrl: function () {
+                return this.introBgmUrl;
+            },
+
+            getGameBGMUrl: function () {
+                return this.gameBgmUrl;
+            },
+
+            // Preload both BGMs into memory
+            preloadBGM: function () {
+                // Load Intro BGM
+                const introUrl = this.getIntroBGMUrl();
+                if (introUrl && !this.bgmBuffer) {
+                    fetch(introUrl)
+                        .then(response => response.arrayBuffer())
+                        .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
+                        .then(audioBuffer => {
+                            this.bgmBuffer = audioBuffer;
+                            console.log('Intro BGM preloaded successfully');
+                        })
+                        .catch(err => {
+                            console.warn('Intro BGM preload failed:', err);
+                        });
+                }
+
+                // Load Game BGM
+                const gameUrl = this.getGameBGMUrl();
+                if (gameUrl && !this.gameBgmBuffer) {
+                    fetch(gameUrl)
+                        .then(response => response.arrayBuffer())
+                        .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
+                        .then(audioBuffer => {
+                            this.gameBgmBuffer = audioBuffer;
+                            console.log('Game BGM preloaded successfully');
+                        })
+                        .catch(err => {
+                            console.warn('Game BGM preload failed:', err);
+                        });
+                }
+            },
+
+            updateIcon: function () {
+                const icon = document.getElementById('musicIcon') || document.getElementById('muteBtn');
+                if (icon) {
+                    icon.innerText = this.isMuted ? '🔇' : '🔊';
+                }
+            },
+
+            toggleMute: function () {
+                this.isMuted = !this.isMuted;
+                this.updateIcon();
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                if (this.isMuted) {
+                    this.stopBGM();
+                } else {
+                    if (gameState === 'PLAYING') {
+                        this.playBGM();
+                    } else if (gameState === 'IDLE' || gameState === 'WAITING') {
+                        this.playIntroBGM();
+                    }
+                }
+            },
+
+            playTone: function (freq, type, duration, release = 0.1, vol = 0.1) {
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration + release);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration + release + 0.1);
+            },
+
+            playClick: function () {
+                this.playTone(800, 'square', 0.05, 0.05, 0.1);
+            },
+
+            playCoin: function () {
+                this.playTone(1500, 'sine', 0.3, 0, 0.1);
+                this.playTone(2000, 'sine', 0.3, 0.05, 0.05);
+            },
+
+            playYuanbao: function () {
+                // 元宝音效：更厚重的金属声
+                this.playTone(600, 'square', 0.15, 0, 0.1);
+                this.playTone(1200, 'triangle', 0.3, 0.05, 0.15);
+                this.playTone(2000, 'sine', 0.4, 0.1, 0.05);
+            },
+
+            playBigBonus: function () {
+                // 大红包音效：更有力
+                this.playTone(400, 'square', 0.1, 0, 0.2);
+                this.playTone(600, 'sine', 0.2, 0.1, 0.2);
+            },
+
+            playBomb: function () {
+                if (this.isMuted || !this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.3; // 300ms
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                noise.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            },
+
+            playCountdown: function (count) {
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                const freq = count > 0 ? 800 : 1200; // High pitch for GO
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            },
+
+            playRolling: function () {
+                this.playTone(1200 + Math.random() * 500, 'square', 0.03, 0, 0.05);
+            },
+
+            playWin: function () {
+                // Victory Fanfare
+                const now = this.ctx.currentTime;
+                // C E G C
+                this.playToneAt(523.25, now, 0.2);
+                this.playToneAt(659.25, now + 0.1, 0.2);
+                this.playToneAt(783.99, now + 0.2, 0.2);
+                this.playToneAt(1046.50, now + 0.3, 0.6);
+            },
+
+            playToneAt: function (freq, time, duration) {
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, time);
+                gain.gain.setValueAtTime(0.2, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(time);
+                osc.stop(time + duration + 0.1);
+            },
+
+            playRiser: function (duration) {
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime + duration);
+
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + duration);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration + 0.15);
+            },
+
+            playBGM: function () {
+                // Game BGM: Use preloaded MP3 if available, fallback to synthesized
+                if (this.isMuted || !this.ctx || this.isPlayingBGM) return;
+                this.isPlayingBGM = true;
+                this.currentBGMType = 'GAME'; // Track type
+
+                // Try to use preloaded Game BGM
+                if (this.gameBgmBuffer) {
+                    console.log('Playing GAME BGM (Minecraft style)');
+                    this.bgmSource = this.ctx.createBufferSource();
+                    this.bgmSource.buffer = this.gameBgmBuffer;
+                    this.bgmSource.loop = true;
+
+                    // Gain node for dynamic volume
+                    this.bgmGain = this.ctx.createGain();
+                    this.bgmGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+
+                    this.bgmSource.connect(this.bgmGain);
+                    this.bgmGain.connect(this.ctx.destination);
+                    this.bgmSource.start(0);
+
+                    // Dynamic intensity loop (adjust playback rate and volume based on timeLeft)
+                    const updateIntensity = () => {
+                        if (!this.isPlayingBGM || !this.bgmSource) return;
+
+                        let rate = 1.0;
+                        let vol = 0.2;
+
+                        if (typeof timeLeft !== 'undefined') {
+                            if (timeLeft <= 5) {
+                                rate = 1.04;  // Gentle speed up
+                                vol = 0.4;
+                            } else if (timeLeft <= 10) {
+                                rate = 1.02;
+                                vol = 0.4;
+                            } else if (timeLeft <= 20) {
+                                rate = 1.01;
+                                vol = 0.3;
+                            }
+                        }
+
+                        this.bgmSource.playbackRate.setValueAtTime(rate, this.ctx.currentTime);
+                        this.bgmGain.gain.setValueAtTime(vol, this.ctx.currentTime);
+
+                        this.bgmTimer = setTimeout(updateIntensity, 500);
+                    };
+                    updateIntensity();
+                    return;
+                }
+
+                // Fallback: Synthesized EDM
+                let beatCount = 0;
+
+                const kick = (vol = 0.3) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.1);
+                };
+
+                const hihat = () => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(8000 + Math.random() * 2000, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.05);
+                };
+
+                const heartbeat = () => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                };
+
+                const playLoop = () => {
+                    if (!this.isPlayingBGM) return;
+
+                    let currentBPM = 140;
+                    let intensity = 1.0;
+
+                    if (typeof timeLeft !== 'undefined') {
+                        if (timeLeft <= 5) {
+                            currentBPM = 180;
+                            intensity = 1.5;
+                        } else if (timeLeft <= 10) {
+                            currentBPM = 160;
+                            intensity = 1.25;
+                        } else if (timeLeft <= 20) {
+                            currentBPM = 150;
+                            intensity = 1.1;
+                        }
+                    }
+
+                    const beatLen = 60 / currentBPM;
+                    kick(0.3 * intensity);
+                    setTimeout(hihat, beatLen * 1000 / 2);
+
+                    if (typeof timeLeft !== 'undefined' && timeLeft <= 10) {
+                        if (beatCount % 2 === 0) heartbeat();
+                    }
+
+                    const scale = [523.25, 659.25, 783.99, 1046.50, 440.00, 523.25, 659.25];
+                    if (beatCount % 2 === 0) {
+                        const freq = scale[Math.floor(Math.random() * scale.length)];
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                        gain.gain.setValueAtTime(0.08 * intensity, this.ctx.currentTime);
+                        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.15);
+                    }
+
+                    beatCount++;
+                    this.bgmTimer = setTimeout(playLoop, beatLen * 1000);
+                };
+                playLoop();
+            },
+
+            playCombo: function (count) {
+                if (this.isMuted || !this.ctx) return;
+                const step = Math.min(count, 12);
+                const freq = 440 * Math.pow(1.05946, step * 2);
+                this.playTone(freq, 'triangle', 0.1, 0, 0.15);
+                this.playTone(freq * 1.5, 'sine', 0.2, 0.05, 0.1);
+            },
+
+            stopBGM: function () {
+                this.isPlayingBGM = false;
+                this.currentBGMType = 'NONE'; // Reset type
+                if (this.bgmTimer) clearTimeout(this.bgmTimer);
+                // Stop audio buffer source if playing
+                if (this.bgmSource) {
+                    try {
+                        this.bgmSource.stop();
+                    } catch (e) { /* Already stopped */ }
+                    this.bgmSource = null;
+                }
+            },
+
+            playIntroBGM: function () {
+                // Intro BGM: Use preloaded MP3 if available, fallback to synthesized
+                if (this.isMuted || !this.ctx || this.isPlayingBGM) return;
+                this.isPlayingBGM = true;
+                this.currentBGMType = 'INTRO'; // Track type
+
+                // Try to use preloaded audio buffer
+                if (this.bgmBuffer) {
+                    console.log('Playing INTRO BGM (Retro Arcade style)');
+                    this.bgmSource = this.ctx.createBufferSource();
+                    this.bgmSource.buffer = this.bgmBuffer;
+                    this.bgmSource.loop = true;
+
+                    // Gain node for volume control
+                    this.bgmGain = this.ctx.createGain();
+                    this.bgmGain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+
+                    this.bgmSource.connect(this.bgmGain);
+                    this.bgmGain.connect(this.ctx.destination);
+                    this.bgmSource.start(0);
+                    return;
+                }
+
+                // Fallback: Synthesized Intro BGM (Festive, Brass/Pop, 110 BPM)
+                const beatLen = 60 / 110;
+                let noteIdx = 0;
+
+                const playPhrase = () => {
+                    if (!this.isPlayingBGM) return;
+
+                    // Rhythm: Kick on 1, 3
+                    if (noteIdx % 2 === 0) {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.15);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.15);
+                    }
+
+                    // Melody: Brass (Sawtooth)
+                    const seq = [261.63, 329.63, 392.00, 523.25];
+                    const freq = seq[noteIdx % seq.length];
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(500, this.ctx.currentTime);
+                    filter.frequency.linearRampToValueAtTime(3000, this.ctx.currentTime + 0.1);
+
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.05);
+                    gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 0.2);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.4);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.5);
+
+                    noteIdx++;
+                    this.bgmTimer = setTimeout(playPhrase, beatLen * 1000);
+                };
+
+                playPhrase();
+            }
+        };
+
+        /**
+         * 游戏配置与全局变量
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+        const IOS_SPEED_SCALE = 0.92;
+        const IOS_MAX_SPEED_SCALE = 0.9;
+
+        const API_BASE = '';
+        const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+        const ASSET_ENDPOINT = '/api/assets';
+        let authToken = localStorage.getItem('hb_token') || '';
+        let ws = null;
+        let serverOffset = 0; // server_time - client_time
+        const BASE_TIME_SKEW_MS = 400; // 与后端 TIME_SKEW_MS 保持一致（默认 400ms）
+        let clientTimeSkewMs = BASE_TIME_SKEW_MS;
+        let lastOffsetSyncAt = 0;
+        let lastOffsetSyncWasRtt = false;
+        let reconnectTimer = null;
+        let reconnectDelay = 800;
+        const maxReconnectDelay = 8000;
+        let connectTimeout = null;
+        let pollInFlight = false;
+        let eligibilityKnown = false;
+        let manualSyncCooldownEnd = 0;
+        let manualSyncCooldownTimer = null;
+        let connectBtnLocked = false;
+        let connectBtnBaseText = '连接游戏';
+        const pollIntervalMs = 2000;
+        const manualSyncCooldownMs = 5000;
+        let viewportWidth = window.innerWidth;
+        let viewportHeight = window.innerHeight;
+        let roundConfig = null;
+        let currentRoundId = 0;
+        let roundStartAt = 0;
+        let roundEndAt = 0;
+        let slicePlan = [];
+        let dropSchedule = [];
+        let scheduleCursor = 0;
+        let usingBackend = false;
+        let isEligible = false;
+        let maxSpeedCap = 1.2;
+        let motionLevel = 0;
+        let pollTimer = null;
+        let pingTimer = null;
+        let rollingTimer = null;
+        let rollingStartAt = 0;
+        const minRollingMS = 2000;
+        let resultRoundId = 0;
+        let resultFinalShown = false;
+        let resultFetchInFlight = false;
+
+        let gameState = 'IDLE';
+        let score = 0;
+        let gameDuration = 30;
+        let waitDuration = 5;
+        let timeLeft = 30;
+        let lastTime = 0;
+        let smoothDelta = 16.67;
+        let gameStartTime = 0;
+        let items = [];
+        let particles = [];
+        let spawnTimer = 0;
+        let gameSpeed = 1;
+        let gameTimerInterval = null;
+        let bigPacketTimer = 0;
+        let rollInterval = null;
+        let pendingCountdown = null;
+        let lastTouchAt = 0;
+        let smsCooldown = 0;
+        let smsTimer = null;
+
+        const assetConfig = {
+            introBgmUrl: '',
+            gameBgmUrl: ''
+        };
+
+        function normalizeAssetUrl(url) {
+            if (!url) return '';
+            const raw = String(url).trim();
+            if (!raw) return '';
+            if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+            if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+            if (raw.startsWith('//')) return window.location.protocol + raw;
+            if (raw.startsWith('/')) return window.location.origin + raw;
+            return window.location.protocol + '//' + raw;
+        }
+
+        function applyAssetConfig(data) {
+            const intro = normalizeAssetUrl(data && data.intro_bgm_url);
+            const game = normalizeAssetUrl(data && data.game_bgm_url);
+            assetConfig.introBgmUrl = intro;
+            assetConfig.gameBgmUrl = game;
+            SoundManager.setBgmUrls(intro, game);
+        }
+
+        function fetchAssetConfig() {
+            fetch(API_BASE + ASSET_ENDPOINT)
+                .then(res => res.json())
+                .then(data => {
+                    if (data) applyAssetConfig(data);
+                })
+                .catch(() => { });
+        }
+
+        const COLORS = {
+            redPacket: '#d91d2a',
+            redPacketBorder: '#ffbd2e',
+            bigPacket: '#ff0000',
+            bigPacketBorder: '#ffd700',
+            coin: '#ffd700',
+            coinInner: '#f0c420',
+            yuanbao: '#ffd700',
+            yuanbaoSide: '#e6ac00',
+            bomb: '#1f2937',
+            bombBorder: '#ef4444'
+        };
+
+        const BIG_PACKET_WORDS = [
+            '顺利',
+            '顺心',
+            '顺遂',
+            '如意',
+            '安康',
+            '平安',
+            '喜乐',
+            '吉祥',
+            '兴旺',
+            '长红',
+            '大卖',
+            '高升',
+            '发财',
+            '进财',
+            '开工',
+            '开单',
+            '暴富'
+        ];
+
+        function pickBigWord() {
+            return BIG_PACKET_WORDS[Math.floor(Math.random() * BIG_PACKET_WORDS.length)];
+        }
+
+        function setHint(text) {
+            const el = document.getElementById('startHint');
+            if (el) el.innerText = text;
+        }
+
+        function applyTokenFromUrl() {
+            try {
+                const url = new URL(window.location.href);
+                const token = url.searchParams.get('token');
+                if (token) {
+                    authToken = token;
+                    eligibilityKnown = false;
+                    isEligible = false;
+                    localStorage.setItem('hb_token', authToken);
+                    url.searchParams.delete('token');
+                    window.history.replaceState({}, document.title, url.toString());
+                }
+            } catch (e) {
+            }
+        }
+
+        function maskPhone(phone) {
+            if (!phone || phone.length < 7) return phone || '';
+            return phone.slice(0, 3) + '****' + phone.slice(-4);
+        }
+
+        function renderUserProfile(user) {
+            const badge = document.getElementById('userBadge');
+            const nameEl = document.getElementById('userName');
+            const avatarEl = document.getElementById('userAvatar');
+            if (!badge || !nameEl || !avatarEl) return;
+            const displayName = (user.nickname && user.nickname.trim()) || maskPhone(user.phone) || `用户#${user.id || ''}`;
+            nameEl.innerText = displayName;
+            if (user.avatar_url) {
+                avatarEl.src = user.avatar_url;
+                avatarEl.classList.remove('hidden');
+            } else {
+                avatarEl.classList.add('hidden');
+                avatarEl.removeAttribute('src');
+            }
+            badge.classList.remove('hidden');
+        }
+
+        function syncServerOffset(serverTime, t0 = null, t1 = null) {
+            if (!serverTime) return;
+            if (typeof t0 === 'number' && typeof t1 === 'number') {
+                const midpoint = Math.round((t0 + t1) / 2);
+                serverOffset = serverTime - midpoint;
+                const rtt = Math.max(0, t1 - t0);
+                const dynamicSkew = Math.round(rtt / 2 + 200);
+                clientTimeSkewMs = Math.max(BASE_TIME_SKEW_MS, Math.min(2000, dynamicSkew));
+                lastOffsetSyncWasRtt = true;
+                lastOffsetSyncAt = Date.now();
+                return;
+            }
+            if (lastOffsetSyncWasRtt && Date.now() - lastOffsetSyncAt < 5000) {
+                return;
+            }
+            serverOffset = serverTime - Date.now();
+            lastOffsetSyncWasRtt = false;
+            lastOffsetSyncAt = Date.now();
+        }
+
+        const ComboManager = {
+            count: 0,
+            timer: null,
+            maxTime: 2500, // 2.5s to keep combo
+            container: null,
+            textEl: null,
+
+            init() {
+                this.container = document.getElementById('comboContainer');
+                this.textEl = document.getElementById('comboCount');
+                this.count = 0;
+            },
+
+            add() {
+                this.count++;
+
+                // Show visuals
+                if (this.container) {
+                    this.container.classList.remove('hidden');
+                    this.container.style.opacity = '1';
+                    this.textEl.innerText = this.count;
+
+                    // Reset animation
+                    this.textEl.style.animation = 'none';
+                    this.textEl.offsetHeight; /* trigger reflow */
+                    this.textEl.style.animation = 'comboPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                }
+
+                // Play sound
+                SoundManager.playCombo(this.count);
+
+                // Reset timer
+                if (this.timer) clearTimeout(this.timer);
+                this.timer = setTimeout(() => {
+                    this.reset();
+                }, this.maxTime);
+            },
+
+            reset() {
+                this.count = 0;
+                if (this.container) {
+                    this.container.style.opacity = '0';
+                    setTimeout(() => {
+                        this.container.classList.add('hidden');
+                    }, 300);
+                }
+                if (this.timer) clearTimeout(this.timer);
+                this.timer = null;
+            }
+        };
+
+        function apiFetch(path, options = {}) {
+            const headers = options.headers || {};
+            if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+            headers['Content-Type'] = 'application/json';
+            return fetch(API_BASE + path, { ...options, headers }).then(res => {
+                if (res.status === 401) {
+                    authToken = '';
+                    eligibilityKnown = false;
+                    isEligible = false;
+                    localStorage.removeItem('hb_token');
+                    document.getElementById('loginPanel').classList.remove('hidden');
+                    setHint('登录已失效，请重新登录');
+                }
+                return res;
+            });
+        }
+
+        function fetchUserProfile() {
+            if (!authToken) return;
+            apiFetch('/api/user/me').then(res => res.json()).then(data => {
+                if (data && !data.error) {
+                    renderUserProfile(data);
+                    document.getElementById('loginPanel').classList.add('hidden');
+                    setHint('已登录，等待管理员开始');
+                }
+            }).catch(() => {
+            });
+        }
+
+
+        function sendCode() {
+            const phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) {
+                setLoginStatus('请输入手机号');
+                return;
+            }
+            const btn = document.getElementById('sendCodeBtn');
+            if (smsCooldown > 0 || (btn && btn.disabled)) {
+                return;
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '发送中...';
+            }
+            apiFetch('/api/auth/sms/send', {
+                method: 'POST',
+                body: JSON.stringify({ phone })
+            }).then(res => res.json()).then(data => {
+                if (data.error) {
+                    setLoginStatus('发送失败: ' + data.error);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = '发送';
+                    }
+                } else {
+                    setLoginStatus('验证码已发送');
+                    startSmsCooldown(60);
+                }
+            }).catch(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '发送';
+                }
+            });
+        }
+
+        function startSmsCooldown(seconds) {
+            const btn = document.getElementById('sendCodeBtn');
+            smsCooldown = seconds;
+            if (smsTimer) clearInterval(smsTimer);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = `${smsCooldown}s`;
+            }
+            smsTimer = setInterval(() => {
+                smsCooldown--;
+                if (smsCooldown <= 0) {
+                    clearInterval(smsTimer);
+                    smsTimer = null;
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = '发送';
+                    }
+                    return;
+                }
+                if (btn) btn.innerText = `${smsCooldown}s`;
+            }, 1000);
+        }
+
+        function verifyCode() {
+            const phone = document.getElementById('phoneInput').value.trim();
+            const code = document.getElementById('codeInput').value.trim();
+            if (!phone || !code) {
+                setLoginStatus('请输入手机号和验证码');
+                return;
+            }
+            apiFetch('/api/auth/sms/verify', {
+                method: 'POST',
+                body: JSON.stringify({ phone, code })
+            }).then(res => res.json()).then(data => {
+                if (data.error) {
+                    setLoginStatus('登录失败: ' + data.error);
+                    return;
+                }
+                authToken = data.token;
+                eligibilityKnown = false;
+                isEligible = false;
+                localStorage.setItem('hb_token', authToken);
+                fetchUserProfile();
+                connectGame();
+                startPolling();
+            });
+        }
+
+        function setLoginStatus(text) {
+            const el = document.getElementById('loginStatus');
+            if (el) el.innerText = text;
+        }
+
+        function resetResultState(roundId = 0) {
+            resultRoundId = roundId || 0;
+            resultFinalShown = false;
+            resultFetchInFlight = false;
+        }
+
+        function shouldRequestSlices() {
+            if (eligibilityKnown && !isEligible) return false;
+            if (!roundConfig) return true;
+            if (roundConfig.status === 'WAITING') return false;
+            return !slicePlan || slicePlan.length === 0;
+        }
+
+        function gameStateUrl(withSlices) {
+            return withSlices ? '/api/game/state' : '/api/game/state?with_slices=0';
+        }
+
+        function fetchGameState(forceSlices = false) {
+            if (!authToken || pollInFlight) return;
+            pollInFlight = true;
+            const t0 = Date.now();
+            const withSlices = forceSlices || shouldRequestSlices();
+            apiFetch(gameStateUrl(withSlices)).then(res => res.json()).then(data => {
+                const t1 = Date.now();
+                if (data && data.server_time) {
+                    syncServerOffset(data.server_time, t0, t1);
+                }
+                if (data && data.round) {
+                    applyRoundState(data);
+                    if (!withSlices) {
+                        const needSlices = isEligible && roundConfig &&
+                            (roundConfig.status === 'RUNNING' || roundConfig.status === 'COUNTDOWN' || roundConfig.status === 'LOCKED') &&
+                            (!slicePlan || slicePlan.length === 0);
+                        if (needSlices) {
+                            fetchGameState(true);
+                        }
+                    }
+                }
+            }).catch(() => { }).finally(() => {
+                pollInFlight = false;
+            });
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        function startPolling() {
+            if (pollTimer || !authToken) return;
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            pollTimer = setInterval(fetchGameState, pollIntervalMs);
+            fetchGameState();
+        }
+
+        function renderConnectBtn() {
+            const btn = document.getElementById('connectBtn');
+            const textEl = document.getElementById('connectBtnText');
+            const barEl = document.getElementById('connectBtnProgress');
+            if (!btn) return;
+            const remaining = Math.max(0, manualSyncCooldownEnd - Date.now());
+            if (textEl) {
+                if (remaining > 0) {
+                    textEl.innerText = `${connectBtnBaseText}（${Math.ceil(remaining / 1000)}s）`;
+                } else {
+                    textEl.innerText = connectBtnBaseText;
+                }
+            }
+            if (barEl) {
+                if (remaining > 0) {
+                    const pct = Math.min(100, Math.max(0, ((manualSyncCooldownMs - remaining) / manualSyncCooldownMs) * 100));
+                    barEl.style.width = pct + '%';
+                    barEl.style.opacity = '1';
+                } else {
+                    barEl.style.width = '0%';
+                    barEl.style.opacity = '0';
+                }
+            }
+            const cooldown = remaining > 0;
+            btn.disabled = connectBtnLocked || cooldown;
+            btn.classList.toggle('btn-cooldown', cooldown);
+        }
+
+        function startManualCooldown() {
+            manualSyncCooldownEnd = Date.now() + manualSyncCooldownMs;
+            if (manualSyncCooldownTimer) {
+                clearInterval(manualSyncCooldownTimer);
+            }
+            manualSyncCooldownTimer = setInterval(() => {
+                if (Date.now() >= manualSyncCooldownEnd) {
+                    clearInterval(manualSyncCooldownTimer);
+                    manualSyncCooldownTimer = null;
+                }
+                renderConnectBtn();
+            }, 200);
+            renderConnectBtn();
+        }
+
+        function manualSync() {
+            if (!authToken) {
+                setHint('请先登录');
+                return;
+            }
+            if (manualSyncCooldownEnd && Date.now() < manualSyncCooldownEnd) {
+                return;
+            }
+            startManualCooldown();
+            connectGame(true);
+            fetchGameState(true);
+        }
+
+        function scheduleReconnect() {
+            if (!authToken || reconnectTimer) return;
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                return;
+            }
+            const delay = reconnectDelay;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connectGame(true);
+            }, delay);
+            reconnectDelay = Math.min(maxReconnectDelay, Math.round(reconnectDelay * 1.5));
+        }
+
+        function connectGame(force = false) {
+            if (!authToken) {
+                setHint('请先登录');
+                return;
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setHint('已连接，等待开始');
+                return;
+            }
+            if (ws && ws.readyState === WebSocket.CONNECTING) {
+                return;
+            }
+            ws = new WebSocket(WS_BASE + '?token=' + encodeURIComponent(authToken));
+            if (connectTimeout) {
+                clearTimeout(connectTimeout);
+                connectTimeout = null;
+            }
+            connectTimeout = setTimeout(() => {
+                if (ws && ws.readyState !== WebSocket.OPEN) {
+                    try { ws.close(); } catch (e) { }
+                    scheduleReconnect();
+                }
+            }, 5000);
+            ws.onopen = () => {
+                setHint('已连接，等待开始');
+                updateConnectBtn('手动同步', false);
+                stopPolling();
+                reconnectDelay = 800;
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
+                if (connectTimeout) {
+                    clearTimeout(connectTimeout);
+                    connectTimeout = null;
+                }
+                if (pingTimer) clearInterval(pingTimer);
+                pingTimer = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }));
+                    }
+                }, 8000);
+            };
+            ws.onmessage = (evt) => {
+                try {
+                    const msg = JSON.parse(evt.data);
+                    handleWSMessage(msg);
+                } catch (e) { }
+            };
+            ws.onclose = () => {
+                setHint('连接断开，正在重连...');
+                updateConnectBtn('重连', false);
+                if (pingTimer) {
+                    clearInterval(pingTimer);
+                    pingTimer = null;
+                }
+                if (connectTimeout) {
+                    clearTimeout(connectTimeout);
+                    connectTimeout = null;
+                }
+                startPolling();
+                scheduleReconnect();
+            };
+            ws.onerror = () => {
+                updateConnectBtn('重试', false);
+                if (connectTimeout) {
+                    clearTimeout(connectTimeout);
+                    connectTimeout = null;
+                }
+                startPolling();
+                scheduleReconnect();
+            };
+            startPolling();
+        }
+
+        function updateConnectBtn(text, disabled) {
+            const btn = document.getElementById('connectBtn');
+            connectBtnBaseText = text || connectBtnBaseText;
+            connectBtnLocked = !!disabled;
+            if (btn) {
+                btn.classList.toggle('cursor-not-allowed', connectBtnLocked);
+            }
+            renderConnectBtn();
+        }
+
+        function handleWSMessage(msg) {
+            if (!msg || !msg.type) return;
+            if (ws && ws.readyState === WebSocket.OPEN && pollTimer) {
+                stopPolling();
+            }
+            if (msg.type === 'hello') {
+                syncServerOffset(msg.data.server_time);
+                return;
+            }
+            if (msg.type === 'round_state') {
+                if (msg.data && msg.data.server_time) {
+                    syncServerOffset(msg.data.server_time);
+                }
+                if (msg.data && msg.data.round && msg.data.round.id && msg.data.round.id !== currentRoundId) {
+                    resetResultState(msg.data.round.id);
+                }
+                applyRoundState(msg.data);
+            }
+            if (msg.type === 'clear_screen') {
+                resetToWaiting('等待管理员开始');
+                startPolling();
+                scheduleReconnect();
+            }
+            if (msg.type === 'round_drawn') {
+                if (msg.data && msg.data.round_id && currentRoundId && msg.data.round_id !== currentRoundId) {
+                    return;
+                }
+                const scoreVal = msg.data.score || 0;
+                const amount = msg.data.amount || 0;
+                const baseAmount = msg.data.base_amount || 0;
+                const luckyAmount = msg.data.lucky_amount || 0;
+                if (!rollingTimer) {
+                    startRollingEffect();
+                }
+                showFinalResult(scoreVal, amount, baseAmount, luckyAmount);
+            }
+        }
+
+        function applyRoundState(data) {
+            if (!data || !data.round) return;
+            roundConfig = data.round;
+            usingBackend = !!roundConfig;
+            roundStartAt = roundConfig.start_at || 0;
+            roundEndAt = roundConfig.end_at || 0;
+            maxSpeedCap = roundConfig.max_speed || (usingBackend ? 1.0 : 2.5);
+            const totalDrops = Math.max(1, roundConfig.drops_per_slice || 1);
+            const complexity = ((roundConfig.bombs_per_slice || 0) + (roundConfig.empty_per_slice || 0) + (roundConfig.bigs_per_slice || 0)) / totalDrops;
+            motionLevel = Math.min(1, Math.max(0, 0.2 + complexity));
+            const nextRoundId = roundConfig.id || 0;
+            if (currentRoundId && nextRoundId && currentRoundId !== nextRoundId) {
+                dropSchedule = [];
+                scheduleCursor = 0;
+                items = [];
+                particles = [];
+                slicePlan = [];
+                clearResultScreen();
+                resetResultState(nextRoundId);
+            }
+            currentRoundId = nextRoundId;
+
+            if (typeof data.eligible !== 'undefined') {
+                isEligible = data.eligible;
+                eligibilityKnown = true;
+            } else {
+                ensureEligibility();
+            }
+
+            if (data.slices) {
+                slicePlan = data.slices;
+            } else if (!isEligible) {
+                slicePlan = [];
+            } else if (roundConfig.status === 'WAITING') {
+                slicePlan = [];
+            }
+
+            if (roundConfig.status !== 'COUNTDOWN') {
+                hideCountdown();
+            }
+
+            if (roundConfig.status === 'WAITING') {
+                resetResultState(roundConfig.id);
+                if (gameState !== 'IDLE') {
+                    resetToWaiting('等待管理员开始');
+                }
+                return;
+            }
+
+            const status = roundConfig.status;
+            let rivalCount = null;
+            if (typeof data.whitelist_count !== 'undefined' && status && status !== 'WAITING') {
+                rivalCount = data.whitelist_count;
+            } else if (typeof data.online_count !== 'undefined') {
+                rivalCount = data.online_count;
+            } else if (typeof data.whitelist_count !== 'undefined') {
+                rivalCount = data.whitelist_count;
+            }
+            if (rivalCount !== null) {
+                let displayCount = rivalCount;
+                if (isEligible) {
+                    displayCount = Math.max(0, rivalCount - 1);
+                }
+                document.getElementById('rivalCount').innerText = displayCount;
+            }
+
+            if (!isEligible && roundConfig.status !== 'WAITING') {
+                showNotEligible();
+                return;
+            }
+
+            if (roundConfig.status === 'LOCKED') {
+                clearResultScreen();
+                setHint('即将开始...');
+            }
+            if (roundConfig.status === 'COUNTDOWN') {
+                clearResultScreen();
+                setHint('倒计时中');
+                scheduleStart();
+            }
+            if (roundConfig.status === 'RUNNING') {
+                clearResultScreen();
+                hideCountdown();
+                scheduleStart(true);
+            }
+            if (roundConfig.status === 'READY_DRAW') {
+                showWaitingDraw();
+            }
+            if (roundConfig.status === 'DRAWING') {
+                if (!(resultFinalShown && resultRoundId === roundConfig.id)) {
+                    startRollingEffect();
+                }
+            }
+            if (roundConfig.status === 'PENDING_CONFIRM' || roundConfig.status === 'FINISHED') {
+                if (!(resultFinalShown && resultRoundId === roundConfig.id)) {
+                    if (!rollingTimer) {
+                        startRollingEffect();
+                    }
+                    fetchResultAndShow();
+                } else {
+                    stopRollingEffect();
+                }
+            }
+        }
+
+        function ensureEligibility() {
+            if (!authToken || eligibilityKnown) return;
+            fetchGameState();
+        }
+
+        function showNotEligible() {
+            resetToWaiting('未在白名单，无法参与');
+        }
+
+        function clearResultScreen() {
+            stopRollingEffect();
+            const result = document.getElementById('resultScreen');
+            if (result) {
+                result.classList.add('hidden');
+            }
+            const btnContainer = document.getElementById('resultButtons');
+            if (btnContainer) {
+                btnContainer.style.opacity = '0';
+                btnContainer.style.pointerEvents = 'none';
+            }
+        }
+
+        function hideCountdown() {
+            const cdScreen = document.getElementById('countdownScreen');
+            cdScreen.classList.add('hidden');
+            if (pendingCountdown) {
+                clearInterval(pendingCountdown);
+                pendingCountdown = null;
+            }
+        }
+
+        function scheduleStart(forceStart) {
+            if (!roundStartAt) return;
+            const startAtLocal = roundStartAt - serverOffset;
+            const delay = startAtLocal - Date.now();
+            if (pendingCountdown) clearInterval(pendingCountdown);
+            if (delay <= 0 || forceStart) {
+                startMainLoop();
+                return;
+            }
+            const cdScreen = document.getElementById('countdownScreen');
+            const cdNum = document.getElementById('countdownNum');
+            cdScreen.classList.remove('hidden');
+
+            let lastSecond = -1;
+            const tick = () => {
+                const left = Math.max(0, Math.ceil((startAtLocal - Date.now()) / 1000));
+
+                // Play sound on second change (3, 2, 1)
+                if (left !== lastSecond && left > 0 && left <= 3) {
+                    SoundManager.playCountdown();
+                    // Reset animation
+                    cdNum.style.animation = 'none';
+                    cdNum.offsetHeight;
+                    cdNum.style.animation = '';
+                    lastSecond = left;
+                }
+
+                cdNum.innerText = left > 0 ? left : 0;
+                if (left <= 0) {
+                    clearInterval(pendingCountdown);
+                    cdScreen.classList.add('hidden');
+                    SoundManager.playTone(800, 'square', 0.5, 0, 0.2); // GO sound
+                    startMainLoop();
+                }
+            };
+            tick();
+            pendingCountdown = setInterval(tick, 100); // Check more frequently
+        }
+
+        function prepareSchedule() {
+            dropSchedule = [];
+            scheduleCursor = 0;
+            if (!slicePlan || slicePlan.length === 0) {
+                return;
+            }
+            slicePlan.forEach(slice => {
+                const drops = buildSliceDrops(slice);
+                dropSchedule.push(...drops);
+            });
+            dropSchedule.sort((a, b) => a.spawnAt - b.spawnAt);
+        }
+
+        function buildSliceDrops(slice) {
+            const drops = [];
+            const dropCount = slice.drop_count;
+            const bombCount = slice.bomb_count;
+            const seed = slice.seed >>> 0;
+            const rng = XorShift32(seed);
+
+            const indices = Array.from({ length: dropCount }, (_, i) => i);
+            shuffle(indices, rng);
+            const bombSet = new Set(indices.slice(0, bombCount));
+
+            const nonBomb = indices.slice(bombCount);
+            const bigCount = slice.big_count || 0;
+            const emptyCount = slice.empty_count || 0;
+            const bigMultiplier = Math.max(1, slice.big_multiplier || 1);
+            const bigSet = new Set();
+            if (bigCount > 0 && nonBomb.length > 0) {
+                shuffle(nonBomb, rng);
+                const maxBig = Math.min(bigCount, nonBomb.length);
+                for (let i = 0; i < maxBig; i++) {
+                    bigSet.add(nonBomb[i]);
+                }
+            }
+            const remain = nonBomb.filter(idx => !bigSet.has(idx));
+            shuffle(remain, rng);
+            const emptySet = new Set();
+            if (emptyCount > 0 && remain.length > 0) {
+                const maxEmpty = Math.min(emptyCount, remain.length);
+                for (let i = 0; i < maxEmpty; i++) {
+                    emptySet.add(remain[i]);
+                }
+            }
+
+            const baseScores = new Array(dropCount).fill(0);
+            const scoring = nonBomb.filter(idx => !emptySet.has(idx));
+            if (scoring.length > 0 && slice.score_total > 0) {
+                let totalWeight = 0;
+                scoring.forEach(idx => {
+                    totalWeight += bigSet.has(idx) ? bigMultiplier : 1;
+                });
+                let allocated = 0;
+                scoring.forEach(idx => {
+                    const weight = bigSet.has(idx) ? bigMultiplier : 1;
+                    const val = Math.floor(slice.score_total * weight / totalWeight);
+                    baseScores[idx] = val;
+                    allocated += val;
+                });
+                let remScore = slice.score_total - allocated;
+                shuffle(scoring, rng);
+                for (let i = 0; i < remScore; i++) {
+                    baseScores[scoring[i % scoring.length]] += 1;
+                }
+            }
+
+            const maxOffset = Math.max(0, slice.duration_ms - slice.window_ms);
+            for (let i = 0; i < dropCount; i++) {
+                const offset = Math.floor(rng.float() * (maxOffset + 1));
+                const spawnAt = slice.start_at + offset;
+                const windowMs = slice.window_ms || 1200;
+                let motion = 'fall';
+                if (!bombSet.has(i)) {
+                    const r = rng.float();
+                    const zig = 0.15 + 0.2 * motionLevel;
+                    const drift = zig + 0.15 + 0.15 * motionLevel;
+                    const arc = drift + 0.1 + 0.1 * motionLevel;
+                    if (r < zig) motion = 'zigzag';
+                    else if (r < drift) motion = 'drift';
+                    else if (r < arc) motion = 'arc';
+                }
+                const ampBase = 18 + 20 * motionLevel;
+                const amp = motion === 'zigzag' ? ampBase + 18 : ampBase;
+                const freq = 1 + 1.2 * motionLevel;
+                const phase = rng.float() * Math.PI * 2;
+                const drift = (motion === 'drift' || motion === 'arc') ? (rng.float() * 2 - 1) * (10 + 20 * motionLevel) : 0;
+                drops.push({
+                    dropId: slice.slice_id * dropCount + i,
+                    isBomb: bombSet.has(i),
+                    isBig: bigSet.has(i),
+                    isEmpty: emptySet.has(i),
+                    baseScore: baseScores[i],
+                    spawnAt,
+                    windowMs,
+                    expiresAt: spawnAt + windowMs,
+                    motion,
+                    amp,
+                    freq,
+                    phase,
+                    drift
+                });
+            }
+            return drops;
+        }
+
+        function XorShift32(seed) {
+            let state = seed >>> 0;
+            return {
+                next() {
+                    state ^= (state << 13) >>> 0;
+                    state ^= state >>> 17;
+                    state ^= (state << 5) >>> 0;
+                    return state >>> 0;
+                },
+                float() {
+                    return (this.next() >>> 0) / 4294967295;
+                }
+            };
+        }
+
+        function shuffle(arr, rng) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = rng.next() % (i + 1);
+                const tmp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = tmp;
+            }
+        }
+
+        function fetchResultAndShow() {
+            if (!roundConfig) return;
+            const rid = roundConfig.id || 0;
+            if (resultFinalShown && resultRoundId === rid) return;
+            if (resultFetchInFlight) return;
+            resultFetchInFlight = true;
+            apiFetch(`/api/game/result?round_id=${rid}`).then(res => res.json()).then(data => {
+                showFinalResult(data.score || 0, data.amount || 0, data.base_amount || 0, data.lucky_amount || 0);
+                resultFinalShown = true;
+                resultRoundId = rid;
+            }).finally(() => {
+                resultFetchInFlight = false;
+            });
+        }
+
+        function showWaitingDraw() {
+            if (!isEligible) return;
+            stopRollingEffect();
+            hideCountdown();
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('resultTitle').innerText = '等待开奖';
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalAmount').innerText = '0.00';
+            document.getElementById('finalBase').innerText = '0.00';
+            document.getElementById('finalLucky').innerText = '0.00';
+            document.getElementById('finalBonus').innerText = '0.00';
+            const btnContainer = document.getElementById('resultButtons');
+            btnContainer.style.opacity = '0';
+            btnContainer.style.pointerEvents = 'none';
+        }
+
+        function startRollingEffect() {
+            if (!isEligible) return;
+            if (rollingTimer) return;
+            SoundManager.init();
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('resultTitle').innerText = '开奖中';
+            const el = document.getElementById('finalScore');
+            const digits = Math.max(3, (score || 0).toString().length);
+            rollingStartAt = Date.now();
+            rollingTimer = setInterval(() => {
+                let randomNum = '';
+                for (let i = 0; i < digits; i++) {
+                    randomNum += Math.floor(Math.random() * 10);
+                }
+                el.innerText = randomNum;
+                if (Math.random() > 0.7) SoundManager.playRolling();
+            }, 80);
+        }
+
+        function stopRollingEffect() {
+            if (rollingTimer) {
+                clearInterval(rollingTimer);
+                rollingTimer = null;
+            }
+            rollingStartAt = 0;
+        }
+
+        function showFinalResult(finalScore, amount, baseAmount = 0, luckyAmount = 0) {
+            if (!isEligible) return;
+            if (roundConfig && roundConfig.id) {
+                resultFinalShown = true;
+                resultRoundId = roundConfig.id;
+            }
+            const now = Date.now();
+            if (rollingStartAt && now - rollingStartAt < minRollingMS) {
+                setTimeout(() => showFinalResult(finalScore, amount, baseAmount, luckyAmount), minRollingMS - (now - rollingStartAt));
+                return;
+            }
+            stopRollingEffect();
+            SoundManager.init();
+            document.getElementById('finalScore').innerText = finalScore;
+            document.getElementById('finalAmount').innerText = (amount / 100).toFixed(2);
+            const bonus = amount - baseAmount - luckyAmount;
+            document.getElementById('finalBase').innerText = (baseAmount / 100).toFixed(2);
+            document.getElementById('finalLucky').innerText = (luckyAmount / 100).toFixed(2);
+            document.getElementById('finalBonus').innerText = (bonus / 100).toFixed(2);
+            document.getElementById('resultTitle').innerText = '战绩揭晓';
+            document.getElementById('resultScreen').classList.remove('hidden');
+            const btnContainer = document.getElementById('resultButtons');
+            btnContainer.style.opacity = '1';
+            btnContainer.style.pointerEvents = 'auto';
+            SoundManager.playWin();
+            document.getElementById('resultScreen').classList.add('shake-screen');
+            setTimeout(() => document.getElementById('resultScreen').classList.remove('shake-screen'), 500);
+        }
+
+        function resize() {
+            // iOS 高刷屏优化：限制最大像素比为 2，避免 3x 屏渲染压力过大导致掉帧或模糊
+            const val = window.devicePixelRatio || 1;
+            const ratio = isIOS ? Math.min(val, 2) : val;
+
+            viewportWidth = window.innerWidth;
+            viewportHeight = window.innerHeight;
+            canvas.width = viewportWidth * ratio;
+            canvas.height = viewportHeight * ratio;
+            canvas.style.width = viewportWidth + 'px';
+            canvas.style.height = viewportHeight + 'px';
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(ratio, ratio);
+
+            // iOS 字体渲染优化
+            if (isIOS) {
+                ctx.fontSmooth = 'always';
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class DropItem {
+            constructor(def = null) {
+                this.reset(def);
+            }
+
+            reset(def = null) {
+                const useBackendSpeed = !!(def && def.windowMs);
+                if (def) {
+                    this.dropId = def.dropId;
+                    this.isBomb = def.isBomb;
+                    this.baseScore = def.baseScore;
+                    this.isBig = !!def.isBig;
+                    this.isEmpty = !!def.isEmpty;
+                    let type = this.isBomb ? 'BOMB' : (this.isBig ? 'BIG_PACKET' : (this.isEmpty ? 'EMPTY' : 'PACKET'));
+                    // 如果是普通红包，有概率变成金币或元宝
+                    if (type === 'PACKET') {
+                        const r = Math.random();
+                        if (r < 0.15) type = 'COIN';
+                        else if (r < 0.30) type = 'YUANBAO';
+                    }
+                    this.type = type;
+                    this.bigWord = this.isBig ? pickBigWord() : '';
+                    this.spawnAt = def.spawnAt || 0;
+                    this.expiresAt = def.expiresAt || 0;
+                    this.windowMs = def.windowMs || 0;
+                    this.alpha = def.isEmpty ? 0.55 : 1.0;
+                    this.motion = def.motion || 'fall';
+                    this.amp = def.amp || 0;
+                    this.freq = def.freq || 0;
+                    this.phase = def.phase || 0;
+                    this.drift = def.drift || 0;
+                } else {
+                    const r = Math.random();
+                    if (r < 0.1) this.type = 'BIG_PACKET';
+                    else if (r < 0.25) this.type = 'COIN';
+                    else if (r < 0.40) this.type = 'YUANBAO';
+                    else this.type = 'PACKET';
+
+                    this.isBomb = false;
+                    this.isBig = this.type === 'BIG_PACKET';
+                    this.isEmpty = false;
+                    this.bigWord = this.isBig ? pickBigWord() : '';
+                    this.spawnAt = 0;
+                    this.expiresAt = 0;
+                    this.windowMs = 0;
+                    this.alpha = 1.0;
+                    this.motion = 'fall';
+                    this.amp = 0;
+                    this.freq = 0;
+                    this.phase = 0;
+                    this.drift = 0;
+                }
+
+                // 巨型红包逻辑
+                if (this.type === 'BIG_PACKET') {
+                    this.width = 120;
+                    this.height = 160;
+                    this.value = Math.random() > 0.5 ? 666 : 888;
+                    this.speedY = (Math.random() * 2 + 5) * gameSpeed * 0.8; // 基础速度提升
+                } else if (this.type === 'BOMB') {
+                    this.width = 60;
+                    this.height = 60;
+                    this.value = -(roundConfig ? roundConfig.bomb_penalty : 50);
+                    this.speedY = (Math.random() * 4 + 5) * gameSpeed;
+                } else {
+                    this.width = this.type === 'PACKET' ? 60 : 50;
+                    this.height = this.type === 'PACKET' ? 80 : 50;
+                    if (def) {
+                        this.value = def.baseScore || 0;
+                    } else {
+                        this.value = this.type === 'PACKET' ? Math.floor(Math.random() * 50) + 10 : 100;
+                    }
+                    // 基础掉落速度大幅提升：原本 (3~6)*speed, 现在 (5~9)*speed
+                    this.speedY = (Math.random() * 4 + 5) * gameSpeed;
+                }
+
+                if (useBackendSpeed) {
+                    const windowSec = Math.max(0.6, (def.windowMs || 1200) / 1000);
+                    const travel = viewportHeight + 260;
+                    const base = travel / windowSec / 60;
+                    const jitter = 0.85 + Math.random() * 0.3;
+                    const bombBoost = this.type === 'BOMB' ? 1.1 : 1.0;
+                    this.speedY = base * jitter * bombBoost;
+                }
+
+                const maxX = Math.max(0, viewportWidth - this.width);
+                this.x = Math.random() * maxX;
+                this.baseX = this.x;
+                this.y = -200 - Math.random() * 100;
+                this.rotation = (Math.random() - 0.5) * 0.5;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.05;
+                this.active = true;
+
+                this.wobble = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = Math.random() * 0.1 + 0.05;
+                if (isIOS) {
+                    this.rotationSpeed *= 0.6;
+                    this.wobbleSpeed *= 0.6;
+                    this.amp *= 0.8;
+                    this.drift *= 0.8;
+                }
+                this.elapsed = 0;
+            }
+
+            update(deltaTime) {
+                if (!this.active) return;
+                const factor = (deltaTime || 16.67) / 16.67;
+                this.y += this.speedY * factor;
+                this.elapsed += deltaTime || 16.67;
+                if (this.motion && this.motion !== 'fall') {
+                    const t = this.elapsed / 1000;
+                    const sway = Math.sin(t * this.freq + this.phase) * this.amp;
+                    const driftX = this.drift * t;
+                    if (this.motion === 'zigzag') {
+                        this.x = this.baseX + sway;
+                    } else if (this.motion === 'arc') {
+                        this.x = this.baseX + sway + driftX;
+                    } else {
+                        this.x = this.baseX + driftX;
+                    }
+                } else {
+                    const wobbleFactor = this.type === 'BIG_PACKET' ? 0.5 : 1.5;
+                    this.x += Math.sin(this.wobble) * wobbleFactor * factor;
+                    this.wobble += this.wobbleSpeed * factor;
+                }
+                this.rotation += this.rotationSpeed * factor;
+                if (this.y > viewportHeight) {
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                if (!this.active) return;
+                ctx.save();
+                if (this.alpha !== undefined) {
+                    ctx.globalAlpha = this.alpha;
+                }
+                const drawX = isIOS ? Math.round(this.x + this.width / 2) : this.x + this.width / 2;
+                const drawY = isIOS ? Math.round(this.y + this.height / 2) : this.y + this.height / 2;
+                ctx.translate(drawX, drawY);
+                ctx.rotate(this.rotation);
+
+                if (this.type === 'PACKET' || this.type === 'BIG_PACKET' || this.type === 'EMPTY') {
+                    const isBig = this.type === 'BIG_PACKET';
+                    const isEmpty = this.type === 'EMPTY';
+                    const mainColor = isEmpty ? '#6b7280' : (isBig ? COLORS.bigPacket : COLORS.redPacket);
+                    const borderColor = isEmpty ? '#9ca3af' : (isBig ? COLORS.bigPacketBorder : COLORS.redPacketBorder);
+
+                    if (isBig) {
+                        ctx.shadowBlur = isIOS ? 8 : 20;
+                        ctx.shadowColor = "gold";
+                    }
+
+                    ctx.fillStyle = mainColor;
+                    ctx.beginPath();
+                    ctx.roundRect(-this.width / 2, -this.height / 2, this.width, this.height, 10);
+                    ctx.fill();
+
+                    ctx.fillStyle = isEmpty ? '#4b5563' : (isBig ? '#cc0000' : '#b5121e');
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2, -this.height / 2 + (isBig ? 40 : 20));
+                    ctx.quadraticCurveTo(0, -this.height / 2 + (isBig ? 90 : 45), this.width / 2, -this.height / 2 + (isBig ? 40 : 20));
+                    ctx.lineTo(this.width / 2, -this.height / 2);
+                    ctx.lineTo(-this.width / 2, -this.height / 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = borderColor;
+                    ctx.beginPath();
+                    ctx.arc(0, -this.height / 2 + (isBig ? 60 : 30), isBig ? 15 : 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = borderColor;
+                    ctx.font = isBig ? 'bold 40px "Ma Shan Zheng"' : '20px "Ma Shan Zheng"';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const bigText = this.bigWord || '福';
+                    ctx.fillText(isEmpty ? '空' : (isBig ? bigText : '福'), 0, isBig ? 20 : 10);
+
+                } else if (this.type === 'BOMB') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = COLORS.bomb;
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = COLORS.bombBorder;
+                    ctx.stroke();
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💣', 0, 2);
+                } else if (this.type === 'YUANBAO') {
+                    // 元宝绘制
+                    const w = this.width * 1.2;
+                    const h = this.height * 0.8;
+
+                    // 底部船形
+                    ctx.fillStyle = COLORS.yuanbao;
+                    ctx.beginPath();
+                    ctx.moveTo(-w / 2, -h / 4);
+                    // 底部圆弧
+                    ctx.bezierCurveTo(-w / 4, h, w / 4, h, w / 2, -h / 4);
+                    // 顶部连接
+                    ctx.quadraticCurveTo(0, 0, -w / 2, -h / 4);
+                    ctx.fill();
+
+                    // 描边
+                    ctx.strokeStyle = COLORS.yuanbaoSide;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // 中间凸起
+                    ctx.beginPath();
+                    ctx.ellipse(0, -h / 4, w / 5, h / 3, 0, Math.PI, 0); // 半椭圆
+                    ctx.fillStyle = COLORS.yuanbaoSide;
+                    ctx.fill();
+
+                } else {
+                    // COIN
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = COLORS.coin;
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#e6ac00';
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.width / 2 * 0.7, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#e6ac00';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#b8860b';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('¥', 0, 2);
+                }
+                ctx.restore();
+            }
+
+            checkHit(x, y) {
+                if (!this.active) return false;
+                const padding = 20;
+                return x > this.x - padding &&
+                    x < this.x + this.width + padding &&
+                    y > this.y - padding &&
+                    y < this.y + this.height + padding;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.03 + 0.02;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+                this.gravity = 0.2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function initGame() {
+            if (roundConfig) {
+                gameDuration = roundConfig.duration_sec || 30;
+                waitDuration = 5;
+            } else {
+                const durationSelect = document.getElementById('durationSelect');
+                const waitSelect = document.getElementById('waitDurationSelect');
+                gameDuration = durationSelect ? parseInt(durationSelect.value) || 30 : 30;
+                waitDuration = waitSelect ? parseInt(waitSelect.value) || 5 : 5;
+            }
+
+            score = 0;
+            timeLeft = gameDuration;
+            items = [];
+            particles = [];
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('timeDisplay').innerText = timeLeft + 's';
+            document.getElementById('timeDisplay').classList.remove('text-red-500');
+
+            // 速度修正：从 1.8 降回 1.3，避免太快
+            gameSpeed = 1.3;
+            spawnTimer = 0;
+            bigPacketTimer = 0;
+
+            if (rollInterval) clearInterval(rollInterval); // 确保清除之前的滚动定时器
+
+            // 重置按钮状态
+            const btnContainer = document.getElementById('resultButtons');
+            btnContainer.style.opacity = '0';
+            btnContainer.style.pointerEvents = 'none'; // 关键修复：禁止点击，防止误触
+
+            document.getElementById('resultTitle').innerText = '战绩揭晓中...';
+            document.getElementById('finalScore').innerText = '0000';
+            document.getElementById('finalAmount').innerText = '0.00';
+            document.getElementById('finalScore').classList.add('text-yellow-200');
+            document.getElementById('finalScore').classList.remove('text-white');
+        }
+
+        function startGame() {
+            if (usingBackend) {
+                return;
+            }
+            SoundManager.init();
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('resultScreen').classList.add('hidden');
+            gameState = 'COUNTDOWN';
+
+            const cdScreen = document.getElementById('countdownScreen');
+            const cdNum = document.getElementById('countdownNum');
+            cdScreen.classList.remove('hidden');
+
+            let count = 3;
+            cdNum.innerText = count;
+            SoundManager.playCountdown();
+
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    cdNum.innerText = count;
+                    SoundManager.playCountdown();
+                    cdNum.style.animation = 'none';
+                    cdNum.offsetHeight;
+                    cdNum.style.animation = '';
+                } else {
+                    clearInterval(timer);
+                    cdScreen.classList.add('hidden');
+                    SoundManager.playTone(800, 'square', 0.5, 0, 0.2);
+                    startMainLoop();
+                }
+            }, 1000);
+        }
+
+        function startMainLoop() {
+            if (gameState === 'PLAYING') return;
+            if (!isEligible && usingBackend) {
+                showNotEligible();
+                return;
+            }
+            if (usingBackend && (!slicePlan || slicePlan.length === 0)) {
+                setHint('配置同步中...');
+                fetchGameState();
+                return;
+            }
+            initGame();
+            ComboManager.init();
+            prepareSchedule();
+            if (usingBackend && dropSchedule.length === 0) {
+                setHint('配置同步中...');
+                fetchGameState();
+                return;
+            }
+            gameState = 'PLAYING';
+            document.getElementById('startScreen').style.display = 'none';
+            hideCountdown();
+            gameStartTime = performance.now();
+            SoundManager.init();
+
+            // Switch BGM
+            SoundManager.stopBGM();
+            SoundManager.playBGM();
+
+            const topBar = document.getElementById('topBar');
+            topBar.style.display = 'flex';
+            topBar.classList.remove('opacity-0');
+
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+
+            gameTimerInterval = setInterval(() => {
+                if (gameState !== 'PLAYING') {
+                    clearInterval(gameTimerInterval);
+                    return;
+                }
+                if (roundEndAt) {
+                    const nowServer = Date.now() + serverOffset;
+                    timeLeft = Math.max(0, Math.ceil((roundEndAt - nowServer) / 1000));
+                } else {
+                    timeLeft--;
+                }
+                document.getElementById('timeDisplay').innerText = timeLeft + 's';
+
+                if (timeLeft <= 5) {
+                    document.getElementById('timeDisplay').classList.add('text-red-500');
+                }
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameState = 'WAITING';
+            clearInterval(gameTimerInterval);
+            SoundManager.stopBGM();
+
+            // Restart Intro BGM for result screen
+            setTimeout(() => {
+                if (!SoundManager.isMuted && !SoundManager.isPlayingBGM) {
+                    SoundManager.playIntroBGM();
+                }
+            }, 500);
+
+            document.getElementById('topBar').classList.add('opacity-0');
+
+            // 直接显示结算界面
+            document.getElementById('topBar').style.display = 'none';
+            if (usingBackend) {
+                showWaitingDraw();
+            } else {
+                // 开始老虎机滚动效果
+                startSlotMachineEffect(score, waitDuration * 1000);
+            }
+        }
+
+        // 老虎机滚动效果逻辑
+        function startSlotMachineEffect(targetScore, duration) {
+            const el = document.getElementById('finalScore');
+            const startTime = performance.now();
+
+            // 重置样式
+            el.classList.add('text-yellow-200'); // 滚动时颜色
+
+            if (rollInterval) clearInterval(rollInterval);
+
+            rollInterval = setInterval(() => {
+                const now = performance.now();
+                const progress = (now - startTime) / duration;
+
+                if (progress >= 1) {
+                    // 结束滚动
+                    clearInterval(rollInterval);
+                    el.innerText = targetScore;
+                    el.classList.remove('text-yellow-200');
+                    el.classList.add('text-white');
+
+                    document.getElementById('resultTitle').innerText = '战绩揭晓';
+
+                    const btnContainer = document.getElementById('resultButtons');
+                    btnContainer.style.opacity = '1';
+                    btnContainer.style.pointerEvents = 'auto'; // 关键修复：恢复点击
+
+                    // 播放胜利音效
+                    SoundManager.playWin();
+
+                    // 屏幕震动一下表示定格
+                    document.getElementById('resultScreen').classList.add('shake-screen');
+                    setTimeout(() => document.getElementById('resultScreen').classList.remove('shake-screen'), 500);
+                    return;
+                }
+
+                // 滚动中：显示随机数字
+                // 为了让效果更像老虎机，我们让位数与最终分数一致
+                const digits = targetScore.toString().length;
+                let randomNum = '';
+                for (let i = 0; i < digits; i++) {
+                    randomNum += Math.floor(Math.random() * 10);
+                }
+                // 或者简单的随机数，稍微大一点范围
+                const maxVal = Math.max(targetScore * 1.5, 999);
+                el.innerText = Math.floor(Math.random() * maxVal);
+
+                // 播放急促的滚动音效
+                if (Math.random() > 0.5) SoundManager.playRolling();
+
+            }, 50); // 每50ms变换一次数字
+        }
+
+        function restartGame() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            if (usingBackend) {
+                document.getElementById('startScreen').style.display = 'flex';
+                setHint('等待管理员开始');
+                gameState = 'IDLE';
+                // Ensure Intro BGM is playing
+                if (!SoundManager.isMuted && !SoundManager.isPlayingBGM) {
+                    SoundManager.playIntroBGM();
+                }
+            } else {
+                startGame();
+            }
+        }
+
+        function backToHome() {
+            resetToWaiting('等待管理员开始');
+        }
+
+        function resetToWaiting(hintText) {
+            gameState = 'IDLE';
+            stopRollingEffect();
+            hideCountdown();
+            if (gameTimerInterval) {
+                clearInterval(gameTimerInterval);
+                gameTimerInterval = null;
+            }
+            if (rollInterval) {
+                clearInterval(rollInterval);
+                rollInterval = null;
+            }
+
+            // Switch back to Intro BGM (Seamless Transition)
+            if (SoundManager.currentBGMType !== 'INTRO') {
+                SoundManager.stopBGM();
+                setTimeout(() => {
+                    if (gameState === 'IDLE' && !SoundManager.isMuted) {
+                        SoundManager.playIntroBGM();
+                    }
+                }, 500);
+            }
+
+            items = [];
+            particles = [];
+            dropSchedule = [];
+            scheduleCursor = 0;
+            if (ComboManager) ComboManager.reset();
+
+            const topBar = document.getElementById('topBar');
+            topBar.classList.add('opacity-0');
+            topBar.style.display = 'none';
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('startScreen').style.display = 'flex';
+            if (hintText) {
+                setHint(hintText);
+            }
+            ctx.clearRect(0, 0, viewportWidth, viewportHeight);
+            if (authToken) {
+                connectGame();
+                startPolling();
+            }
+        }
+
+        function createFloatText(x, y, amount, isBig = false) {
+            const el = document.createElement('div');
+            el.className = isBig ? 'score-float score-float-big' : 'score-float';
+            if (typeof amount === 'string') {
+                el.innerText = amount;
+            } else {
+                const prefix = amount >= 0 ? '+' : '';
+                el.innerText = prefix + amount;
+            }
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => { el.remove(); }, 800);
+        }
+
+        function createExplosion(x, y, color, isBig = false) {
+            const count = isBig ? 40 : 15;
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+            if (isBig) {
+                const body = document.getElementById('mainBody');
+                body.classList.add('shake-screen');
+                setTimeout(() => {
+                    body.classList.remove('shake-screen');
+                }, 500);
+            }
+        }
+
+        function sendClick(item, clientX, clientY) {
+            const payload = {
+                round_id: roundConfig.id,
+                drop_id: item.dropId,
+                client_ts: Date.now()
+            };
+            apiFetch('/api/game/click', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            }).then(res => res.json()).then(data => {
+                if (data.error) {
+                    let msg = '无效';
+                    if (data.error === 'out of window') msg = '过期';
+                    if (data.error === 'already clicked') msg = '已点过';
+                    if (data.error === 'round not running') msg = '未开始';
+                    if (data.error === 'not whitelisted') msg = '未在白名单';
+                    createFloatText(clientX, clientY, msg, false);
+                    return;
+                }
+                const delta = data.delta || 0;
+                score = data.total || score;
+                document.getElementById('scoreDisplay').innerText = score;
+
+                const isBomb = data.bomb === true || item.isBomb;
+                createFloatText(clientX, clientY, delta, isBomb);
+
+                if (isBomb) {
+                    ComboManager.reset();
+                    SoundManager.playTone(120, 'square', 0.2, 0, 0.2);
+                    document.getElementById('mainBody').classList.add('shake-screen');
+                    setTimeout(() => document.getElementById('mainBody').classList.remove('shake-screen'), 400);
+                } else {
+                    ComboManager.add();
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'PLAYING') return;
+
+            const rawDelta = timestamp - lastTime;
+            lastTime = timestamp;
+            const safeDelta = Math.min(60, Math.max(8, rawDelta || 16.67));
+            smoothDelta = smoothDelta * 0.85 + safeDelta * 0.15;
+            const deltaTime = Math.min(33, Math.max(10, smoothDelta));
+
+            ctx.clearRect(0, 0, viewportWidth, viewportHeight);
+            const nowServer = Date.now() + serverOffset;
+
+            // --- 速度控制逻辑 (指数增长) ---
+            const elapsedTime = timestamp - gameStartTime;
+            const progress = Math.min(1.0, elapsedTime / (gameDuration * 1000));
+
+            // 速度修正：后端模式更慢
+            const baseSpeed = usingBackend ? 0.6 : 1.3;
+            const maxSpeedAdd = usingBackend ? 0.8 : 3.5;
+            let targetSpeed = baseSpeed + (Math.pow(progress, 2) * maxSpeedAdd);
+
+            if (usingBackend && maxSpeedCap > 0) {
+                const cap = isIOS ? maxSpeedCap * IOS_MAX_SPEED_SCALE : maxSpeedCap;
+                targetSpeed = Math.min(targetSpeed, cap);
+            }
+            if (isIOS) {
+                targetSpeed *= IOS_SPEED_SCALE;
+            }
+            gameSpeed = targetSpeed;
+
+            // --- 生成逻辑 ---
+            if (usingBackend && dropSchedule.length > 0) {
+                while (scheduleCursor < dropSchedule.length && dropSchedule[scheduleCursor].spawnAt <= nowServer) {
+                    const def = dropSchedule[scheduleCursor];
+                    if (!def.expiresAt || nowServer <= def.expiresAt) {
+                        const item = new DropItem(def);
+                        if (def.isEmpty) {
+                            item.alpha = 0.55;
+                        }
+                        items.push(item);
+                    }
+                    scheduleCursor++;
+                }
+            } else {
+                spawnTimer += deltaTime;
+                const baseSpawnRate = viewportWidth > 600 ? 80 : 350;
+                if (spawnTimer > baseSpawnRate / Math.sqrt(gameSpeed)) {
+                    items.push(new DropItem());
+                    spawnTimer = 0;
+                }
+                bigPacketTimer += deltaTime;
+                if (progress > 0.2 && bigPacketTimer > 8000) {
+                    if (Math.random() < 0.05) {
+                        items.push(new DropItem('BIG_PACKET'));
+                        bigPacketTimer = 0;
+                    }
+                }
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                if (usingBackend && item.expiresAt && nowServer > item.expiresAt + clientTimeSkewMs) {
+                    item.active = false;
+                }
+                item.update(deltaTime);
+                if (!item.active) {
+                    items.splice(i, 1);
+                }
+            }
+
+            // 绘制顺序：先红包，再炸弹（炸弹永远在最上层）
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.active && item.type !== 'BOMB') item.draw();
+            }
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.active && item.type === 'BOMB') item.draw();
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function handleInput(clientX, clientY) {
+            if (gameState !== 'PLAYING') return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const nowServer = Date.now() + serverOffset;
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                if (item.active && item.checkHit(x, y)) {
+                    item.active = false;
+                    if (usingBackend && roundConfig) {
+                        // 立即给予命中特效
+                        const isBomb = item.isBomb;
+                        const explodeColor = isBomb ? COLORS.bomb : COLORS.redPacket;
+                        createExplosion(item.x + item.width / 2, item.y + item.height / 2, explodeColor, false);
+                        SoundManager.playClick();
+                        sendClick(item, clientX, clientY);
+                    } else {
+                        score += item.value;
+                        document.getElementById('scoreDisplay').innerText = score;
+
+                        const isBig = item.type === 'BIG_PACKET';
+                        const isBomb = item.type === 'BOMB';
+                        let explodeColor = COLORS.redPacket;
+                        if (item.type === 'COIN') explodeColor = COLORS.coin;
+                        if (item.type === 'YUANBAO') explodeColor = COLORS.yuanbao;
+                        if (isBig) explodeColor = COLORS.bigPacket;
+                        if (isBomb) explodeColor = COLORS.bomb;
+
+                        createExplosion(item.x + item.width / 2, item.y + item.height / 2, explodeColor, isBig);
+                        createFloatText(clientX, clientY, item.value, isBig);
+
+                        if (isBomb) {
+                            ComboManager.reset();
+                            SoundManager.playTone(120, 'square', 0.2, 0, 0.2);
+                            document.getElementById('mainBody').classList.add('shake-screen');
+                            setTimeout(() => document.getElementById('mainBody').classList.remove('shake-screen'), 400);
+                        } else {
+                            ComboManager.add();
+                            if (isBig) {
+                                SoundManager.playBigBonus();
+                            } else if (item.type === 'PACKET') {
+                                SoundManager.playClick();
+                            } else if (item.type === 'YUANBAO') {
+                                SoundManager.playYuanbao();
+                            } else {
+                                SoundManager.playCoin();
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (Date.now() - lastTouchAt < 500) return;
+            handleInput(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            lastTouchAt = Date.now();
+            for (let i = 0; i < e.touches.length; i++) {
+                handleInput(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        }, { passive: false });
+
+        // Update startup logic
+        function enterGame() {
+            const screen = document.getElementById('welcomeScreen');
+            const flap = document.getElementById('packetFlap');
+            const wrapper = document.getElementById('packetWrapper');
+            const hint = document.getElementById('clickHint');
+
+            if (!screen || !flap || !wrapper) return;
+
+            // Audio Init
+            SoundManager.init();
+
+            // 0. Shake Interaction & Sound
+            wrapper.classList.add('shake-packet');
+
+            // Interaction: Short Rising Pitch ("Riser")
+            SoundManager.playRiser(0.4);
+
+            // 1. Play "Open" Sound (Delayed slightly to match shake end)
+            setTimeout(() => {
+                SoundManager.playTone(800, 'sine', 0.1, 0, 0.2);
+                SoundManager.playTone(400, 'square', 0.3, 0.1, 0.3);
+
+                // 2. Animate Opening
+                flap.classList.add('open-flap');
+                if (hint) hint.style.opacity = '0';
+
+                // 3. Trigger Continuous Fountain Effect
+                const rect = wrapper.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 3;
+                startFountain(centerX, centerY, 2500);
+            }, 300); // Wait for part of shake
+
+            // 4. Delay fade out to allow explosion to be seen
+            setTimeout(() => {
+                if (wrapper) {
+                    wrapper.style.transform = 'translateY(100px) scale(0.8)';
+                    wrapper.style.opacity = '0';
+                }
+
+                screen.style.opacity = '0';
+
+                // Start BGM as screen fades
+                if (gameState === 'IDLE') {
+                    SoundManager.playIntroBGM();
+                }
+
+                setTimeout(() => {
+                    screen.classList.add('hidden');
+                }, 1000);
+            }, 3000); // Wait 3s for the show
+        }
+
+        function startFountain(x, y, duration) {
+            const container = document.getElementById('welcomeScreen');
+            const words = ['福', '财', '旺', '吉', '顺', '发', '暴富', '大吉', '安康', '好运'];
+            let particles = [];
+            let startTime = Date.now();
+
+            // Spawner Loop
+            function spawnBatch() {
+                if (Date.now() - startTime > duration) return;
+
+                // 性能优化：每帧只生成 2 个，减少 DOM 节点压力
+                for (let k = 0; k < 2; k++) {
+                    const el = document.createElement('div');
+                    el.className = 'absolute pointer-events-none font-bold select-none whitespace-nowrap';
+
+                    // 70% Coins, 30% Words
+                    const isWord = Math.random() > 0.7;
+
+                    let vx, vy;
+
+                    if (isWord) {
+                        el.innerText = words[Math.floor(Math.random() * words.length)];
+                        // 固定配色：金色 或 红色，避免杂乱
+                        el.style.color = Math.random() > 0.5 ? '#e63b46' : '#ffd700';
+                        el.style.fontSize = (24 + Math.random() * 20) + 'px';
+                        el.style.fontFamily = '"Ma Shan Zheng", cursive';
+                        el.style.textShadow = '0 0 5px rgba(255, 255, 255, 0.5)';
+
+                        vx = (Math.random() - 0.5) * 12;
+                        vy = - (12 + Math.random() * 10);
+                    } else {
+                        // Coin
+                        el.innerText = '💰';
+                        el.style.fontSize = (20 + Math.random() * 15) + 'px';
+                        vx = (Math.random() - 0.5) * 20;
+                        vy = - (10 + Math.random() * 15);
+                    }
+
+                    el.style.left = x + 'px';
+                    el.style.top = y + 'px';
+                    el.style.transform = 'translate(-50%, -50%)';
+                    el.style.zIndex = Math.floor(Math.random() * 50);
+
+                    container.appendChild(el);
+
+                    particles.push({
+                        el,
+                        x, y,
+                        vx, vy,
+                        life: 1.0,
+                        gravity: 0.6
+                    });
+                }
+
+                requestAnimationFrame(spawnBatch);
+            }
+            spawnBatch();
+
+            // Updater Loop
+            function update() {
+                if (particles.length === 0 && Date.now() - startTime > duration + 2000) return;
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity;
+                    p.life -= 0.02; // Faster fade to clean up DOM
+
+                    p.el.style.left = p.x + 'px';
+                    p.el.style.top = p.y + 'px';
+                    p.el.style.opacity = p.life;
+
+                    // Simplify transform for performance
+                    const rot = (1 - p.life) * 180;
+                    p.el.style.transform = `translate(-50%, -50%) scale(${0.5 + p.life * 0.5}) rotate(${rot}deg)`;
+
+                    if (p.life <= 0) {
+                        p.el.remove();
+                        particles.splice(i, 1);
+                    }
+                }
+
+                requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        window.addEventListener('load', () => {
+            fetchAssetConfig();
+            applyTokenFromUrl();
+            if (authToken) {
+                fetchUserProfile();
+                connectGame();
+                startPolling();
+            }
+        });
+
+        // Background music handling for visibility
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                fetchGameState();
+                scheduleReconnect();
+            } else {
+                SoundManager.stopBGM();
+            }
+        });
+
+    </script>
+</body>
+
+</html>

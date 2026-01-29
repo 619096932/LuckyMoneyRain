@@ -1,0 +1,56 @@
+[36mWHAT[0m: 创建 .gitignore
+[35mWHY[0m:  排除隐私与安全数据并忽略常见产物
+# Secrets / sensitive data
+.env
+.env.*
+!.env.example
+accounts.txt
+AliPayCrt/
+
+# Certificates / keys
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.pass
+
+# Likely secret file patterns
+*secret*
+*credential*
+*apikey*
+*api_key*
+*token*
+*password*
+*passwd*
+*private*
+
+# Databases / local data
+*.db
+*.sqlite
+*.sqlite3
+*.sqlitedb
+
+# Logs / temp
+*.log
+*.tmp
+*.bak
+*.backup
+
+# Build / output
+/dist/
+/bin/
+*.exe
+*.out
+*.test
+*.prof
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
