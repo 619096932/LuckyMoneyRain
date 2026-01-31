@@ -26,6 +26,9 @@ type Config struct {
 	ClickGraceMS                   int
 	MinSpeedMult                   float64
 	TimeSkewMS                     int
+	RuntimeCacheUsers              int
+	RuntimeCacheSlices             int
+	ClickStreamEnabled             bool
 	IntroBGMURL                    string
 	GameBGMURL                     string
 	AlipayAppID                    string
@@ -66,9 +69,12 @@ func Load() Config {
 		SubmailAppKey:                  getEnv("SUBMAIL_APPKEY", ""),
 		SubmailProjectID:               getEnv("SUBMAIL_PROJECT", ""),
 		ClickWindowMS:                  getEnvInt("CLICK_WINDOW_MS", 2400),
-		ClickGraceMS:                   getEnvInt("CLICK_GRACE_MS", 1200),
+		ClickGraceMS:                   getEnvInt("CLICK_GRACE_MS", 15000),
 		MinSpeedMult:                   getEnvFloat("MIN_SPEED_MULT", 0.2),
 		TimeSkewMS:                     getEnvInt("TIME_SKEW_MS", 400),
+		RuntimeCacheUsers:              getEnvInt("RUNTIME_CACHE_USERS", 2000),
+		RuntimeCacheSlices:             getEnvInt("RUNTIME_CACHE_SLICES", 4),
+		ClickStreamEnabled:             getEnvBool("CLICK_STREAM_ENABLED", true),
 		IntroBGMURL:                    getEnv("INTRO_BGM_URL", ""),
 		GameBGMURL:                     getEnv("GAME_BGM_URL", ""),
 		AlipayAppID:                    getEnv("ALIPAY_APP_ID", ""),
@@ -97,8 +103,14 @@ func Load() Config {
 	if cfg.ClickGraceMS < 0 {
 		cfg.ClickGraceMS = 0
 	}
-	if cfg.ClickGraceMS > 5000 {
-		cfg.ClickGraceMS = 5000
+	if cfg.ClickGraceMS > 15000 {
+		cfg.ClickGraceMS = 15000
+	}
+	if cfg.RuntimeCacheUsers < 0 {
+		cfg.RuntimeCacheUsers = 0
+	}
+	if cfg.RuntimeCacheSlices < 0 {
+		cfg.RuntimeCacheSlices = 0
 	}
 	cfg.AdminPhones = parseCSVSet(getEnv("ADMIN_PHONES", ""))
 	return cfg

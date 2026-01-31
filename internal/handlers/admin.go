@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -89,6 +90,16 @@ func (s *Server) CreateRound(c *gin.Context) {
 	var req createRoundRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	var pendingID int64
+	var pendingStatus string
+	row := s.DB.QueryRow(`SELECT id, status FROM rounds WHERE status IN (?, ?) ORDER BY id DESC LIMIT 1`, models.RoundWaiting, models.RoundLocked)
+	if err := row.Scan(&pendingID, &pendingStatus); err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("已有未开始轮次：#%d (%s)，请先删除或开始该轮次", pendingID, pendingStatus)})
+		return
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
 	if req.DurationSec <= 0 {
@@ -265,42 +276,31 @@ func (s *Server) LockRound(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	if err := s.setRoundStatus(roundID, models.RoundLocked); err != nil {
+	round, err := s.getRoundByID(roundID)
+	if err != nil || round == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "round not found"})
+		return
+	}
+	if round.Status != models.RoundWaiting {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "round not in waiting state"})
+		return
+	}
+	if err := s.ensureNoActiveRounds(roundID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := s.DB.Exec(`UPDATE rounds SET status=?, updated_at=NOW() WHERE id=? AND status=?`, models.RoundLocked, roundID, models.RoundWaiting)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
-
-	// 将当前在线用户纳入白名单 (批量插入优化)
-	ctx := context.Background()
-	activeIDs := s.getActiveOnlineUserIDs(ctx)
-
-	// 批量 MySQL INSERT (每批 100 条)
-	if len(activeIDs) > 0 {
-		batchSize := 100
-		for i := 0; i < len(activeIDs); i += batchSize {
-			end := i + batchSize
-			if end > len(activeIDs) {
-				end = len(activeIDs)
-			}
-			batch := activeIDs[i:end]
-			if len(batch) == 0 {
-				continue
-			}
-			// 构建批量 INSERT 语句
-			query := "INSERT IGNORE INTO round_whitelist (round_id, user_id, created_at) VALUES "
-			vals := make([]interface{}, 0, len(batch)*2)
-			for j, uid := range batch {
-				if j > 0 {
-					query += ","
-				}
-				query += "(?, ?, NOW())"
-				vals = append(vals, roundID, uid)
-			}
-			_, _ = s.DB.Exec(query, vals...)
-		}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "round status changed"})
+		return
 	}
 
 	// 导入白名单到 Redis (批量 SAdd)
+	ctx := context.Background()
 	rows, err := s.DB.Query(`SELECT user_id FROM round_whitelist WHERE round_id = ?`, roundID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
@@ -349,6 +349,10 @@ func (s *Server) StartRound(c *gin.Context) {
 	}
 	if round.Status != models.RoundLocked {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "round not locked"})
+		return
+	}
+	if err := s.ensureNoActiveRounds(roundID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	s.clearRoundCache(roundID)
@@ -702,6 +706,57 @@ func (s *Server) ClearRound(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "cleared"})
 }
 
+func (s *Server) DeleteRound(c *gin.Context) {
+	roundID, err := parseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	round, err := s.getRoundByID(roundID)
+	if err != nil || round == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "round not found"})
+		return
+	}
+	if round.Status != models.RoundWaiting && round.Status != models.RoundLocked {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "round already started"})
+		return
+	}
+	var batchCount int
+	if err := s.DB.QueryRow(`SELECT COUNT(1) FROM award_batches WHERE round_id = ?`, roundID).Scan(&batchCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if batchCount > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "round has award batches"})
+		return
+	}
+	tx, err := s.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if _, err := tx.Exec(`DELETE FROM round_whitelist WHERE round_id = ?`, roundID); err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if _, err := tx.Exec(`DELETE FROM rounds WHERE id = ?`, roundID); err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if s.Redis != nil {
+		ctx := context.Background()
+		_ = s.Redis.Del(ctx, whitelistKey(roundID), scoreZSetKey(roundID), scoreSumKey(roundID), clickStreamKey(roundID)).Err()
+	}
+	s.broadcastClearScreen(roundID, "deleted")
+	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
 func (s *Server) ConfirmAward(c *gin.Context) {
 	batchID, err := parseIDParam(c, "id")
 	if err != nil {
@@ -713,6 +768,57 @@ func (s *Server) ConfirmAward(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "confirmed"})
+}
+
+func (s *Server) VoidAwardBatch(c *gin.Context) {
+	batchID, err := parseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	tx, err := s.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	var roundID int64
+	var status string
+	row := tx.QueryRow(`SELECT round_id, status FROM award_batches WHERE id = ? FOR UPDATE`, batchID)
+	if err := row.Scan(&roundID, &status); err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusNotFound, gin.H{"error": "batch not found"})
+		return
+	}
+	if status == "CONFIRMED" {
+		_ = tx.Rollback()
+		c.JSON(http.StatusBadRequest, gin.H{"error": "batch already confirmed"})
+		return
+	}
+	if status == "VOID" {
+		_ = tx.Commit()
+		c.JSON(http.StatusOK, gin.H{"status": "void"})
+		return
+	}
+	if _, err := tx.Exec(`UPDATE award_batches SET status='VOID' WHERE id=?`, batchID); err != nil {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	_, _ = tx.Exec(`UPDATE rounds SET status=? WHERE id=? AND status IN (?, ?)`, models.RoundReadyDraw, roundID, models.RoundPendingConfirm, models.RoundDrawing)
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if rt := s.Game.GetCurrent(); rt != nil && rt.Round.ID == roundID {
+		if rt.Round.Status == models.RoundPendingConfirm || rt.Round.Status == models.RoundDrawing {
+			rt.Round.Status = models.RoundReadyDraw
+			s.Game.SetCurrent(rt)
+		}
+	}
+	if round, _ := s.getRoundByID(roundID); round != nil {
+		s.broadcastRoundState(*round)
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "void"})
 }
 
 func (s *Server) confirmAwardBatchWithRetry(batchID int64, retry int) error {
@@ -748,6 +854,10 @@ func (s *Server) confirmAwardBatch(batchID int64) error {
 	if status == "CONFIRMED" {
 		_ = tx.Commit()
 		return nil
+	}
+	if status == "VOID" {
+		_ = tx.Rollback()
+		return errors.New("batch voided")
 	}
 	rows, err := tx.Query(`SELECT user_id, amount FROM award_details WHERE batch_id = ?`, batchID)
 	if err != nil {
@@ -887,6 +997,119 @@ func (s *Server) ListRounds(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": items})
 }
 
+func (s *Server) GetRoundResults(c *gin.Context) {
+	roundID, err := parseIDParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	limit := 50
+	if v := c.Query("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 && parsed <= 500 {
+			limit = parsed
+		}
+	}
+	offset := 0
+	if v := c.Query("offset"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+	q := strings.TrimSpace(c.Query("q"))
+	tokens := strings.Fields(q)
+	if len(tokens) > 6 {
+		tokens = tokens[:6]
+	}
+
+	baseSQL := `SELECT ad.user_id, u.phone, u.nickname, ad.score, ad.amount, ad.base_amount, ad.lucky_amount,
+		ROW_NUMBER() OVER (ORDER BY ad.score DESC, ad.user_id ASC) AS r
+		FROM award_details ad
+		JOIN award_batches ab ON ad.batch_id = ab.id
+		JOIN users u ON ad.user_id = u.id
+		WHERE ab.round_id = ? AND ab.status <> 'VOID'`
+	query := "SELECT t.user_id, t.phone, t.nickname, t.score, t.amount, t.base_amount, t.lucky_amount, t.r FROM (" + baseSQL + ") t"
+	countQuery := "SELECT COUNT(1) FROM (" + baseSQL + ") t"
+	args := []interface{}{roundID}
+	whereArgs := make([]interface{}, 0)
+
+	if len(tokens) > 0 {
+		conds := make([]string, 0, len(tokens))
+		for _, token := range tokens {
+			if token == "" {
+				continue
+			}
+			conds = append(conds, "(t.phone LIKE ? OR t.nickname LIKE ? OR t.user_id = ?)")
+			like := "%" + token + "%"
+			whereArgs = append(whereArgs, like, like)
+			if uid, err := strconv.ParseInt(token, 10, 64); err == nil {
+				whereArgs = append(whereArgs, uid)
+			} else {
+				whereArgs = append(whereArgs, int64(-1))
+			}
+		}
+		if len(conds) > 0 {
+			where := " WHERE " + strings.Join(conds, " OR ")
+			query += where
+			countQuery += where
+		}
+	}
+	query += " ORDER BY t.r ASC LIMIT ? OFFSET ?"
+
+	countArgs := append([]interface{}{}, args...)
+	countArgs = append(countArgs, whereArgs...)
+	var total int
+	if err := s.DB.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	queryArgs := append([]interface{}{}, args...)
+	queryArgs = append(queryArgs, whereArgs...)
+	queryArgs = append(queryArgs, limit, offset)
+	rows, err := s.DB.Query(query, queryArgs...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	defer rows.Close()
+
+	type resultItem struct {
+		UserID      int64
+		Phone       string
+		Nickname    string
+		Score       int
+		Amount      int64
+		BaseAmount  int64
+		LuckyAmount int64
+		Rank        int64
+	}
+	items := make([]gin.H, 0)
+	for rows.Next() {
+		var it resultItem
+		if err := rows.Scan(&it.UserID, &it.Phone, &it.Nickname, &it.Score, &it.Amount, &it.BaseAmount, &it.LuckyAmount, &it.Rank); err == nil {
+			items = append(items, gin.H{
+				"user_id":      it.UserID,
+				"phone":        it.Phone,
+				"nickname":     it.Nickname,
+				"score":        it.Score,
+				"amount":       it.Amount,
+				"base_amount":  it.BaseAmount,
+				"lucky_amount": it.LuckyAmount,
+				"rank":         it.Rank,
+			})
+		}
+	}
+	var scoreSum int64
+	var scoreUsers int64
+	_ = s.DB.QueryRow(`SELECT COALESCE(SUM(ad.score),0), COUNT(1) FROM award_details ad JOIN award_batches ab ON ad.batch_id = ab.id WHERE ab.round_id = ? AND ab.status <> 'VOID'`, roundID).Scan(&scoreSum, &scoreUsers)
+	c.JSON(http.StatusOK, gin.H{
+		"items":       items,
+		"total":       total,
+		"score_sum":   scoreSum,
+		"score_users": scoreUsers,
+	})
+}
+
 func (s *Server) ExportRound(c *gin.Context) {
 	roundID, err := parseIDParam(c, "id")
 	if err != nil {
@@ -897,7 +1120,7 @@ func (s *Server) ExportRound(c *gin.Context) {
 		FROM award_details ad
 		JOIN award_batches ab ON ad.batch_id = ab.id
 		JOIN users u ON ad.user_id = u.id
-		WHERE ab.round_id = ? ORDER BY ad.score DESC`, roundID)
+		WHERE ab.round_id = ? AND ab.status <> 'VOID' ORDER BY ad.score DESC`, roundID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
@@ -997,7 +1220,7 @@ func (s *Server) GetLeaderboard(c *gin.Context) {
 		// fallback to award_details
 		rows, err := s.DB.Query(`SELECT ad.user_id, ad.score FROM award_details ad
 			JOIN award_batches ab ON ad.batch_id = ab.id
-			WHERE ab.round_id = ? ORDER BY ad.score DESC LIMIT ?`, roundID, limit)
+			WHERE ab.round_id = ? AND ab.status <> 'VOID' ORDER BY ad.score DESC LIMIT ?`, roundID, limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 			return
@@ -1148,8 +1371,10 @@ func (s *Server) calcQPS(roundID int64, nowMS int64) (int, int) {
 func (s *Server) broadcastRoundState(round models.Round) {
 	rt := s.Game.GetCurrent()
 	var slices []game.SliceRuntime
+	revealSalt := ""
 	if rt != nil && rt.Round.ID == round.ID {
 		slices = rt.Slices
+		revealSalt = rt.RevealSalt
 	}
 	ctx := context.Background()
 	onlineCount := len(s.getActiveOnlineUserIDs(ctx))
@@ -1158,7 +1383,7 @@ func (s *Server) broadcastRoundState(round models.Round) {
 	if len(userIDs) == 0 {
 		payload := mustJSON(WSMessage{
 			Type: "round_state",
-			Data: roundStatePayload(round, slices, nil, onlineCount, int(whitelistCount), 0),
+			Data: roundStatePayload(round, slices, revealSalt, nil, onlineCount, int(whitelistCount), 0),
 		})
 		s.Hub.Broadcast(payload)
 		return
@@ -1191,18 +1416,6 @@ func (s *Server) broadcastRoundState(round models.Round) {
 		}
 	}
 
-	// 预生成两种 payload：eligible=true 和 eligible=false
-	// 对于 WAITING 和 LOCKED 状态，所有人看到的内容相同
-	if round.Status == models.RoundWaiting || round.Status == models.RoundLocked {
-		eligibleTrue := true
-		payload := mustJSON(WSMessage{
-			Type: "round_state",
-			Data: roundStatePayload(round, slices, &eligibleTrue, onlineCount, int(whitelistCount), 0),
-		})
-		s.Hub.Broadcast(payload)
-		return
-	}
-
 	// 其他状态：按白名单分组发送
 	for _, uid := range userIDs {
 		eligible := eligibleMap[uid]
@@ -1212,7 +1425,7 @@ func (s *Server) broadcastRoundState(round models.Round) {
 		}
 		payload := mustJSON(WSMessage{
 			Type: "round_state",
-			Data: roundStatePayload(payloadRound, slices, &eligible, onlineCount, int(whitelistCount), uid),
+			Data: roundStatePayload(payloadRound, slices, revealSalt, &eligible, onlineCount, int(whitelistCount), uid),
 		})
 		s.Hub.SendToUser(uid, payload)
 	}
@@ -1249,6 +1462,32 @@ func (s *Server) getRoundByID(id int64) (*models.Round, error) {
 	}
 	r.Status = models.RoundStatus(status)
 	return &r, nil
+}
+
+func (s *Server) ensureNoActiveRounds(excludeID int64) error {
+	statuses := []models.RoundStatus{
+		models.RoundLocked,
+		models.RoundCountdown,
+		models.RoundRunning,
+		models.RoundDrawing,
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(statuses)), ",")
+	args := make([]interface{}, 0, len(statuses)+1)
+	args = append(args, excludeID)
+	for _, st := range statuses {
+		args = append(args, string(st))
+	}
+	query := fmt.Sprintf("SELECT id, status FROM rounds WHERE id <> ? AND status IN (%s) LIMIT 1", placeholders)
+	row := s.DB.QueryRow(query, args...)
+	var id int64
+	var status string
+	if err := row.Scan(&id, &status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	return fmt.Errorf("another round active: id=%d status=%s", id, status)
 }
 
 func (s *Server) setRoundStatus(roundID int64, status models.RoundStatus) error {

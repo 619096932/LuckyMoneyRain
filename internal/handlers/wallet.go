@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
 )
 
 type bindAlipayRequest struct {
@@ -98,12 +100,14 @@ func (s *Server) CreateWithdraw(c *gin.Context) {
 		return
 	}
 	reqID := normalizeRequestID(req.RequestID)
-	outBizNo := ""
-	if reqID != "" {
-		outBizNo = buildOutBizNo(uid, reqID)
+	if reqID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request_id required"})
+		return
 	}
+	outBizNo := buildOutBizNo(uid, reqID)
 	if outBizNo == "" {
-		outBizNo = newOutBizNo(uid)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request_id"})
+		return
 	}
 	autoPay := s.autoWithdrawEnabled(req.Amount)
 	status := WithdrawStatusPending
@@ -129,54 +133,27 @@ func (s *Server) CreateWithdraw(c *gin.Context) {
 		return
 	}
 
-	if reqID != "" {
-		var existingID int64
-		var existingStatus string
-		var existingAmount int64
-		row := tx.QueryRow(`SELECT id, status, amount FROM withdraw_requests WHERE user_id=? AND out_biz_no=? ORDER BY id DESC LIMIT 1 FOR UPDATE`,
-			uid, outBizNo)
-		if err := row.Scan(&existingID, &existingStatus, &existingAmount); err == nil {
-			if err := tx.Commit(); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"status":  strings.ToLower(existingStatus),
-				"id":      existingID,
-				"balance": balance,
-				"amount":  existingAmount,
-			})
-			return
-		} else if err != sql.ErrNoRows {
-			_ = tx.Rollback()
+	var existingID int64
+	var existingStatus string
+	var existingAmount int64
+	row = tx.QueryRow(`SELECT id, status, amount FROM withdraw_requests WHERE user_id=? AND out_biz_no=? ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+		uid, outBizNo)
+	if err := row.Scan(&existingID, &existingStatus, &existingAmount); err == nil {
+		if err := tx.Commit(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 			return
 		}
-	} else {
-		var existingID int64
-		var existingStatus string
-		var existingAmount int64
-		row := tx.QueryRow(`SELECT id, status, amount FROM withdraw_requests
-			WHERE user_id=? AND amount=? AND status IN (?, ?, ?) AND created_at >= (NOW() - INTERVAL 10 SECOND)
-			ORDER BY id DESC LIMIT 1 FOR UPDATE`,
-			uid, req.Amount, WithdrawStatusPending, WithdrawStatusProcessing, WithdrawStatusWaiting)
-		if err := row.Scan(&existingID, &existingStatus, &existingAmount); err == nil {
-			if err := tx.Commit(); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"status":  strings.ToLower(existingStatus),
-				"id":      existingID,
-				"balance": balance,
-				"amount":  existingAmount,
-			})
-			return
-		} else if err != sql.ErrNoRows {
-			_ = tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
-			return
-		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":  strings.ToLower(existingStatus),
+			"id":      existingID,
+			"balance": balance,
+			"amount":  existingAmount,
+		})
+		return
+	} else if err != sql.ErrNoRows {
+		_ = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
 	}
 
 	if balance < req.Amount {
@@ -196,6 +173,27 @@ func (s *Server) CreateWithdraw(c *gin.Context) {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
 		uid, req.Amount, status, outBizNo, autoPayFlag, acc.Name, acc.Account, acc.IDCard, sql.NullTime{Valid: autoPay, Time: time.Now()})
 	if err != nil {
+		if isDuplicateKey(err) {
+			_ = tx.Rollback()
+			var existingID int64
+			var existingStatus string
+			var existingAmount int64
+			row := s.DB.QueryRow(`SELECT id, status, amount FROM withdraw_requests WHERE user_id=? AND out_biz_no=? ORDER BY id DESC LIMIT 1`,
+				uid, outBizNo)
+			if scanErr := row.Scan(&existingID, &existingStatus, &existingAmount); scanErr == nil {
+				currentBalance := int64(0)
+				_ = s.DB.QueryRow(`SELECT balance FROM wallets WHERE user_id=?`, uid).Scan(&currentBalance)
+				c.JSON(http.StatusOK, gin.H{
+					"status":  strings.ToLower(existingStatus),
+					"id":      existingID,
+					"balance": currentBalance,
+					"amount":  existingAmount,
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+			return
+		}
 		_ = tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
@@ -320,4 +318,15 @@ func buildOutBizNo(uid int64, reqID string) string {
 		return ""
 	}
 	return fmt.Sprintf("HB%d%s", uid, reqID)
+}
+
+func isDuplicateKey(err error) bool {
+	if err == nil {
+		return false
+	}
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		return mysqlErr.Number == 1062
+	}
+	return strings.Contains(err.Error(), "Duplicate entry")
 }

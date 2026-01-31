@@ -2,6 +2,10 @@ package game
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"math"
 	"strconv"
@@ -74,27 +78,42 @@ type SliceRuntime struct {
 }
 
 type RoundRuntime struct {
-	Round  models.Round
-	Slices []SliceRuntime
+	Round      models.Round
+	Slices     []SliceRuntime
+	RevealSalt string
 }
 
 type Manager struct {
-	mu           sync.RWMutex
-	current      *RoundRuntime
-	redis        *redis.Client
-	windowMS     int
-	minSpeedMult float64
-	timeSkewMS   int64
-	lateGraceMS  int64
+	mu             sync.RWMutex
+	current        *RoundRuntime
+	redis          *redis.Client
+	windowMS       int
+	minSpeedMult   float64
+	timeSkewMS     int64
+	lateGraceMS    int64
+	cacheMu        sync.Mutex
+	cacheRoundID   int64
+	cacheSalt      string
+	cacheUsers     map[int64]map[int]SliceRuntime
+	cacheMaxUsers  int
+	cacheMaxSlices int
 }
 
-func NewManager(redis *redis.Client, windowMS int, minSpeedMult float64, timeSkewMS int, lateGraceMS int) *Manager {
+func NewManager(redis *redis.Client, windowMS int, minSpeedMult float64, timeSkewMS int, lateGraceMS int, cacheUsers int, cacheSlices int) *Manager {
+	if cacheUsers < 0 {
+		cacheUsers = 0
+	}
+	if cacheSlices < 0 {
+		cacheSlices = 0
+	}
 	return &Manager{
-		redis:        redis,
-		windowMS:     windowMS,
-		minSpeedMult: minSpeedMult,
-		timeSkewMS:   int64(timeSkewMS),
-		lateGraceMS:  int64(lateGraceMS),
+		redis:          redis,
+		windowMS:       windowMS,
+		minSpeedMult:   minSpeedMult,
+		timeSkewMS:     int64(timeSkewMS),
+		lateGraceMS:    int64(lateGraceMS),
+		cacheMaxUsers:  cacheUsers,
+		cacheMaxSlices: cacheSlices,
 	}
 }
 
@@ -102,6 +121,7 @@ func (m *Manager) SetCurrent(rt *RoundRuntime) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.current = rt
+	m.resetRuntimeCacheLocked()
 }
 
 func (m *Manager) GetCurrent() *RoundRuntime {
@@ -121,6 +141,76 @@ func (m *Manager) CurrentRoundID() int64 {
 		return 0
 	}
 	return m.current.Round.ID
+}
+
+func (m *Manager) cacheEnabled() bool {
+	return m.cacheMaxUsers > 0 && m.cacheMaxSlices > 0
+}
+
+func (m *Manager) resetRuntimeCacheLocked() {
+	if !m.cacheEnabled() {
+		return
+	}
+	m.cacheMu.Lock()
+	defer m.cacheMu.Unlock()
+	m.cacheRoundID = 0
+	m.cacheSalt = ""
+	m.cacheUsers = make(map[int64]map[int]SliceRuntime)
+}
+
+func (m *Manager) getSliceRuntime(rt *RoundRuntime, userID int64, sliceID int) SliceRuntime {
+	if !m.cacheEnabled() {
+		manifest := rt.Slices[sliceID].Manifest
+		outcomeSeed := UserSeed(manifest.Seed, userID)
+		visualSeed := UserVisualSeed(manifest.Seed, userID, rt.RevealSalt)
+		return BuildSliceRuntimeWithSeeds(manifest, outcomeSeed, visualSeed)
+	}
+
+	m.cacheMu.Lock()
+	if m.cacheUsers == nil || m.cacheRoundID != rt.Round.ID || m.cacheSalt != rt.RevealSalt {
+		m.cacheRoundID = rt.Round.ID
+		m.cacheSalt = rt.RevealSalt
+		m.cacheUsers = make(map[int64]map[int]SliceRuntime)
+	}
+	userSlices := m.cacheUsers[userID]
+	if userSlices != nil {
+		if cached, ok := userSlices[sliceID]; ok {
+			m.cacheMu.Unlock()
+			return cached
+		}
+	}
+	m.cacheMu.Unlock()
+
+	manifest := rt.Slices[sliceID].Manifest
+	outcomeSeed := UserSeed(manifest.Seed, userID)
+	visualSeed := UserVisualSeed(manifest.Seed, userID, rt.RevealSalt)
+	runtime := BuildSliceRuntimeWithSeeds(manifest, outcomeSeed, visualSeed)
+
+	m.cacheMu.Lock()
+	if m.cacheRoundID != rt.Round.ID || m.cacheSalt != rt.RevealSalt {
+		m.cacheMu.Unlock()
+		return runtime
+	}
+	userSlices = m.cacheUsers[userID]
+	if userSlices == nil {
+		if m.cacheMaxUsers > 0 && len(m.cacheUsers) >= m.cacheMaxUsers {
+			for k := range m.cacheUsers {
+				delete(m.cacheUsers, k)
+				break
+			}
+		}
+		userSlices = make(map[int]SliceRuntime)
+		m.cacheUsers[userID] = userSlices
+	}
+	if m.cacheMaxSlices > 0 && len(userSlices) >= m.cacheMaxSlices {
+		for k := range userSlices {
+			delete(userSlices, k)
+			break
+		}
+	}
+	userSlices[sliceID] = runtime
+	m.cacheMu.Unlock()
+	return runtime
 }
 
 func BuildRoundRuntime(round models.Round, windowMS int) (*RoundRuntime, error) {
@@ -205,6 +295,7 @@ func BuildRoundRuntime(round models.Round, windowMS int) (*RoundRuntime, error) 
 		}
 		rt.Slices[i] = buildSliceRuntime(manifest)
 	}
+	rt.RevealSalt = newRevealSalt()
 	return rt, nil
 }
 
@@ -310,10 +401,32 @@ func UserSeed(baseSeed uint32, userID int64) uint32 {
 	return baseSeed ^ (u * 2654435761)
 }
 
-func buildSliceRuntimeWithSeed(manifest SliceManifest, seed uint32) SliceRuntime {
+func UserVisualSeed(baseSeed uint32, userID int64, salt string) uint32 {
+	if salt == "" {
+		return UserSeed(baseSeed, userID) ^ 0x9e3779b9
+	}
+	h := sha256.New()
+	_, _ = h.Write([]byte(salt))
+	var buf [12]byte
+	binary.BigEndian.PutUint32(buf[0:4], baseSeed)
+	binary.BigEndian.PutUint64(buf[4:12], uint64(userID))
+	_, _ = h.Write(buf[:])
+	sum := h.Sum(nil)
+	return binary.BigEndian.Uint32(sum[:4])
+}
+
+func BuildSliceRuntimeWithSeed(manifest SliceManifest, seed uint32) SliceRuntime {
 	m := manifest
 	m.Seed = seed
 	return buildSliceRuntime(m)
+}
+
+func BuildSliceRuntimeWithSeeds(manifest SliceManifest, outcomeSeed uint32, visualSeed uint32) SliceRuntime {
+	runtime := BuildSliceRuntimeWithSeed(manifest, outcomeSeed)
+	if visualSeed != outcomeSeed {
+		runtime.OffsetsMS = buildOffsets(manifest, visualSeed)
+	}
+	return runtime
 }
 
 func (m *Manager) ValidateClick(ctx context.Context, userID int64, roundID int64, dropID int, nowMS int64) (int, int, bool, error) {
@@ -339,13 +452,13 @@ func (m *Manager) ValidateClick(ctx context.Context, userID int64, roundID int64
 	if idx < 0 || idx >= manifest.DropCount {
 		return 0, 0, false, errors.New("invalid drop index")
 	}
-	slice := buildSliceRuntimeWithSeed(manifest, UserSeed(manifest.Seed, userID))
+	slice := m.getSliceRuntime(rt, userID, sliceID)
 
 	// 时间窗口校验（使用服务端时间）
 	dropStart := slice.Manifest.StartAtMS + int64(slice.OffsetsMS[idx])
-	// if nowMS+m.timeSkewMS < dropStart || nowMS > dropStart+int64(slice.Manifest.WindowMS)+m.timeSkewMS+m.lateGraceMS {
-	// 	return 0, 0, false, errors.New("out of window")
-	// }
+	if nowMS+m.timeSkewMS < dropStart || nowMS > dropStart+int64(slice.Manifest.WindowMS)+m.timeSkewMS+m.lateGraceMS {
+		return 0, 0, false, errors.New("out of window")
+	}
 
 	// 去重（每用户一个bitmap）
 	bitKey := clickBitmapKey(roundID, userID, rt.Round.StartAtMS)
@@ -459,4 +572,25 @@ func roundTTL(endAtMS int64) time.Duration {
 		return 2 * time.Hour
 	}
 	return ttl
+}
+
+func newRevealSalt() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 10)
+	}
+	return hex.EncodeToString(buf)
+}
+
+func buildOffsets(manifest SliceManifest, seed uint32) []int {
+	rng := NewXorShift32(seed)
+	offsets := make([]int, manifest.DropCount)
+	maxOffset := manifest.DurationMS - manifest.WindowMS
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	for i := 0; i < manifest.DropCount; i++ {
+		offsets[i] = int(math.Floor(rng.Float64() * float64(maxOffset+1)))
+	}
+	return offsets
 }

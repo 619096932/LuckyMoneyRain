@@ -28,6 +28,7 @@ type Server struct {
 	Alipay          *payments.AlipayClient
 	withdrawEnabled atomic.Bool
 	onlineTouch     sync.Map
+	qpsCounters     sync.Map
 }
 
 func NewServer(cfg config.Config, db *sql.DB, redis *redis.Client) *Server {
@@ -53,7 +54,7 @@ func NewServer(cfg config.Config, db *sql.DB, redis *redis.Client) *Server {
 		Cfg:       cfg,
 		DB:        db,
 		Redis:     redis,
-		Game:      game.NewManager(redis, cfg.ClickWindowMS, cfg.MinSpeedMult, cfg.TimeSkewMS, cfg.ClickGraceMS),
+		Game:      game.NewManager(redis, cfg.ClickWindowMS, cfg.MinSpeedMult, cfg.TimeSkewMS, cfg.ClickGraceMS, cfg.RuntimeCacheUsers, cfg.RuntimeCacheSlices),
 		SMS:       sms.NewSubmailClient(cfg.SubmailAppID, cfg.SubmailAppKey, cfg.SubmailProjectID),
 		JWTSecret: []byte(cfg.JWTSecret),
 		Hub:       NewHub(),
@@ -61,6 +62,7 @@ func NewServer(cfg config.Config, db *sql.DB, redis *redis.Client) *Server {
 	}
 	srv.withdrawEnabled.Store(cfg.WithdrawEnabled)
 	srv.loadWithdrawSwitch()
+	srv.startQPSFlusher()
 	return srv
 }
 

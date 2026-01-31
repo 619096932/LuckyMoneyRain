@@ -35,6 +35,7 @@ func (s *Server) AuthRequired() gin.HandlerFunc {
 		c.Set("uid", claims.UserID)
 		c.Set("phone", claims.Phone)
 		c.Set("admin", claims.IsAdmin)
+		c.Set("sid", claims.SessionID)
 		c.Next()
 	}
 }

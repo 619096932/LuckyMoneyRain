@@ -213,7 +213,7 @@ CREATE TABLE `withdraw_requests` (
   PRIMARY KEY (`id`) USING BTREE,
   KEY `idx_user` (`user_id`) USING BTREE,
   KEY `idx_status` (`status`) USING BTREE,
-  KEY `idx_out_biz` (`out_biz_no`) USING BTREE,
+  UNIQUE KEY `uniq_out_biz` (`out_biz_no`) USING BTREE,
   KEY `idx_next_attempt` (`next_attempt_at`) USING BTREE,
   KEY `idx_auto_status` (`auto_pay`,`status`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;

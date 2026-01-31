@@ -246,6 +246,84 @@
       font-size: 13px;
     }
 
+    .lock-tools {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .lock-tools input[type="text"] {
+      flex: 1;
+    }
+
+    .lock-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .lock-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .lock-check input {
+      width: 20px !important;
+      height: 20px !important;
+      flex: 0 0 20px;
+      max-width: 20px !important;
+      min-width: 20px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      box-sizing: border-box;
+      appearance: auto;
+      accent-color: #37e2c9;
+    }
+
+    .lock-list .list-item {
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .lock-list .lock-check {
+      flex: 1;
+    }
+
+    .lock-list .user-line {
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lock-list input[type="checkbox"] {
+      width: 20px !important;
+      height: 20px !important;
+      min-width: 20px !important;
+      max-width: 20px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: inline-block;
+    }
+
+    .round-result-tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .round-result-tools input {
+      width: 220px;
+      max-width: 220px;
+      flex: 0 0 220px;
+    }
+
     .progress {
       height: 6px;
       border-radius: 999px;
@@ -1054,6 +1132,21 @@
           <div id="roundList" class="list" style="max-height:260px; overflow:auto; margin-top:12px;"></div>
         </div>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <h2>轮次结果</h2>
+          <div class="round-result-tools">
+            <input id="roundResultSearch" type="text" placeholder="手机号/昵称/用户ID" onkeydown="if(event.key==='Enter'){loadRoundResults(true)}" />
+            <button class="btn ghost" onclick="loadRoundResults(true)">搜索</button>
+          </div>
+        </div>
+        <div id="roundResultSummary" class="note" style="margin-top:6px;">选择历史轮次查看</div>
+        <div id="roundResultList" class="list" style="max-height:360px; overflow:auto; margin-top:10px;"></div>
+        <div class="footer-actions">
+          <button class="btn ghost" onclick="prevRoundResultPage()">上一页</button>
+          <button class="btn ghost" onclick="nextRoundResultPage()">下一页</button>
+        </div>
+      </div>
     </section>
 
     <section class="tab-panel" data-tab-panel="withdraw">
@@ -1212,7 +1305,17 @@
         <button class="btn ghost" onclick="closeLockModal()">关闭</button>
       </div>
       <div class="note">锁定后在线用户可一键导入白名单</div>
-      <div id="lockOnlineUsers" class="list" style="max-height:280px; overflow:auto; margin-top:12px;"></div>
+      <div class="lock-tools">
+        <input id="lockFilterInput" type="text" placeholder="手机号/昵称/用户ID，空格分隔" oninput="applyLockFilter()" />
+        <div class="lock-select">
+          <label class="lock-check" style="gap:6px;">
+            <input id="lockSelectAll" type="checkbox" onchange="toggleLockSelectAll(this.checked)" />
+            <span>全选</span>
+          </label>
+          <span id="lockFilterHint" class="note">已筛选 0/0</span>
+        </div>
+      </div>
+      <div id="lockOnlineUsers" class="list lock-list" style="max-height:280px; overflow:auto; margin-top:12px;"></div>
       <div class="footer-actions">
         <button class="btn secondary" onclick="importAllOnline()">一键导入白名单</button>
         <button class="btn" onclick="closeLockModal()">关闭</button>
@@ -1270,6 +1373,8 @@
     const qpsSeries = [];
     const scoreSeries = [];
     let onlineUserCache = [];
+    let lockFilterText = '';
+    const lockSelectedIds = new Set();
     let presetMode = 'preset';
     let withdrawOffset = 0;
     let withdrawLastCount = 0;
@@ -1297,6 +1402,9 @@
     let raceLaneMap = new Map();
     let raceSegmentCount = 10;
     let lastSummaryKey = '';
+    let roundResultOffset = 0;
+    let roundResultLimit = 50;
+    let roundResultTotal = 0;
 
     const difficultyPresets = {
       // =====================================================
@@ -1401,7 +1509,10 @@
 
     const batchStatusLabels = {
       PENDING_CONFIRM: '待确认入账',
-      CONFIRMED: '已确认入账'
+      CONFIRMED: '已确认入账',
+      READY_DRAW: '待开奖',
+      DRAWING: '开奖中',
+      VOID: '已作废'
     };
 
     // =====================
@@ -1473,6 +1584,24 @@
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    async function readJsonSafe(res) {
+      const text = await res.text();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        return { raw: text };
+      }
+    }
+
+    async function requireOk(res, fallbackMsg) {
+      const data = await readJsonSafe(res);
+      if (!res.ok || data.error) {
+        throw new Error(data.error || data.raw || fallbackMsg || '请求失败');
+      }
+      return data;
+    }
+
     function pushSeries(arr, value) {
       arr.push(value);
       if (arr.length > 30) arr.shift();
@@ -1494,7 +1623,7 @@
 
     function batchStatusClass(status) {
       if (status === 'CONFIRMED') return 'ok';
-      if (status === 'PENDING_CONFIRM') return 'warn';
+      if (['PENDING_CONFIRM', 'READY_DRAW', 'DRAWING'].includes(status)) return 'warn';
       return '';
     }
 
@@ -2104,42 +2233,65 @@
         document.getElementById('createResult').innerText = '幸运池比例 + 基础池比例 不能超过 100%';
         return;
       }
-      const res = await fetch(`${apiBase}/api/admin/rounds`, {
-        method: 'POST',
-        headers: adminHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      document.getElementById('createResult').innerText = JSON.stringify(data);
-      if (data.id) {
-        currentRoundId = data.id;
-        setFollowCurrent(false);
-        loadBatches();
-        loadRounds();
-        refreshLeaderboard();
-        pollMetrics();
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds`, {
+          method: 'POST',
+          headers: adminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await requireOk(res, '创建失败');
+        document.getElementById('createResult').innerText = JSON.stringify(data);
+        if (data.id) {
+          currentRoundId = data.id;
+          setFollowCurrent(false);
+          loadBatches();
+          loadRounds();
+          refreshLeaderboard();
+          pollMetrics();
+        }
+      } catch (e) {
+        document.getElementById('createResult').innerText = `失败：${e.message || '创建失败'}`;
+        alert(e.message || '创建失败');
       }
     }
 
     async function lockRound() {
       if (!currentRoundId) return;
-      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/lock`, { method: 'POST', headers: adminHeaders() });
-      openLockModal();
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/lock`, { method: 'POST', headers: adminHeaders() });
+        await requireOk(res, '锁定失败');
+        openLockModal();
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '锁定失败');
+      }
     }
 
     async function startRound() {
       if (!currentRoundId) return;
-      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/start`, {
-        method: 'POST',
-        headers: adminHeaders(),
-        body: JSON.stringify({ countdown_sec: parseInt(document.getElementById('countdownInput').value || '3', 10) })
-      });
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/start`, {
+          method: 'POST',
+          headers: adminHeaders(),
+          body: JSON.stringify({ countdown_sec: parseInt(document.getElementById('countdownInput').value || '3', 10) })
+        });
+        await requireOk(res, '开始失败');
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '开始失败');
+      }
     }
 
     async function drawRound() {
       if (!currentRoundId) return;
-      await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/draw`, { method: 'POST', headers: adminHeaders() });
-      loadBatches();
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/draw`, { method: 'POST', headers: adminHeaders() });
+        await requireOk(res, '开奖失败');
+        loadBatches();
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '开奖失败');
+      }
     }
 
     // =====================
@@ -2158,7 +2310,16 @@
 
     async function importAllOnline() {
       if (!currentRoundId) return;
-      const user_ids = onlineUserCache.map(item => item.user_id);
+      const filterTokens = splitFilterTokens(lockFilterText);
+      let user_ids = [];
+      if (lockSelectedIds.size > 0) {
+        user_ids = Array.from(lockSelectedIds);
+      } else if (filterTokens.length > 0) {
+        const filtered = filterOnlineList(onlineUserCache, lockFilterText);
+        user_ids = filtered.map(item => item.user_id);
+      } else {
+        user_ids = onlineUserCache.map(item => item.user_id);
+      }
       if (user_ids.length === 0) return;
       await fetch(`${apiBase}/api/admin/rounds/${currentRoundId}/whitelist`, {
         method: 'POST',
@@ -2171,21 +2332,139 @@
     // =====================
     // Lists & Rendering
     // =====================
+    function splitFilterTokens(text) {
+      return (text || '').trim().split(/\s+/).map(v => v.trim()).filter(Boolean);
+    }
+
+    function matchOnlineUser(item, token) {
+      if (!token) return false;
+      const t = token.toLowerCase();
+      const phone = String(item.phone || '').toLowerCase();
+      const nickname = String(item.nickname || '').toLowerCase();
+      const uid = String(item.user_id || item.id || '').toLowerCase();
+      return (phone && phone.includes(t)) || (nickname && nickname.includes(t)) || (uid && uid.includes(t));
+    }
+
+    function filterOnlineList(list, filterText) {
+      const tokens = splitFilterTokens(filterText);
+      if (!tokens.length) return list || [];
+      return (list || []).filter(item => tokens.some(token => matchOnlineUser(item, token)));
+    }
+
+    function updateLockFilterHint(filteredCount, totalCount) {
+      const hint = document.getElementById('lockFilterHint');
+      if (!hint) return;
+      const selectedCount = lockSelectedIds.size;
+      let text = `已筛选 ${filteredCount}/${totalCount}`;
+      if (selectedCount > 0) {
+        text += `，已选 ${selectedCount}`;
+      }
+      hint.textContent = text;
+    }
+
+    function updateLockSelectAllState(filtered) {
+      const selectAll = document.getElementById('lockSelectAll');
+      if (!selectAll) return;
+      const total = filtered.length;
+      if (total === 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+        return;
+      }
+      let selected = 0;
+      filtered.forEach(item => {
+        if (lockSelectedIds.has(item.user_id)) selected += 1;
+      });
+      if (selected === 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+      } else if (selected === total) {
+        selectAll.checked = true;
+        selectAll.indeterminate = false;
+      } else {
+        selectAll.checked = false;
+        selectAll.indeterminate = true;
+      }
+    }
+
+    function toggleLockSelectAll(checked) {
+      const filtered = filterOnlineList(onlineUserCache, lockFilterText);
+      if (checked) {
+        filtered.forEach(item => lockSelectedIds.add(item.user_id));
+      } else {
+        filtered.forEach(item => lockSelectedIds.delete(item.user_id));
+      }
+      renderOnlineList('lockOnlineUsers', onlineUserCache);
+    }
+
+    function toggleLockSelect(uid, checked) {
+      const userId = Number(uid);
+      if (!userId) return;
+      if (checked) {
+        lockSelectedIds.add(userId);
+      } else {
+        lockSelectedIds.delete(userId);
+      }
+      const filtered = filterOnlineList(onlineUserCache, lockFilterText);
+      updateLockSelectAllState(filtered);
+      updateLockFilterHint(filtered.length, onlineUserCache.length);
+    }
+
+    function applyLockFilter() {
+      const input = document.getElementById('lockFilterInput');
+      lockFilterText = input ? input.value : '';
+      renderOnlineList('lockOnlineUsers', onlineUserCache);
+    }
+
     function renderOnlineList(containerId, list) {
       const el = document.getElementById(containerId);
       if (!el) return;
-      if (!list || list.length === 0) {
-        el.innerHTML = '<div class="note">暂无在线用户</div>';
+      const isLock = containerId === 'lockOnlineUsers';
+      const source = list || [];
+      if (isLock) {
+        const idSet = new Set(source.map(item => item.user_id));
+        Array.from(lockSelectedIds).forEach(uid => {
+          if (!idSet.has(uid)) lockSelectedIds.delete(uid);
+        });
+      }
+      const filtered = isLock ? filterOnlineList(source, lockFilterText) : source;
+      if (!filtered || filtered.length === 0) {
+        if (isLock && source.length > 0 && splitFilterTokens(lockFilterText).length > 0) {
+          el.innerHTML = '<div class="note">无匹配用户</div>';
+        } else {
+          el.innerHTML = '<div class="note">暂无在线用户</div>';
+        }
+        if (isLock) {
+          updateLockSelectAllState([]);
+          updateLockFilterHint(0, source.length);
+        }
         return;
       }
-      el.innerHTML = list.map(item => {
-        return `<div class="list-item">
+      if (!isLock) {
+        el.innerHTML = filtered.map(item => {
+          return `<div class="list-item">
       <div class="user-line">
         ${renderAvatar(item)}
         <div>${renderUserName(item)}</div>
       </div>
     </div>`;
+        }).join('');
+        return;
+      }
+      el.innerHTML = filtered.map(item => {
+        const checked = lockSelectedIds.has(item.user_id) ? 'checked' : '';
+        return `<div class="list-item">
+      <label class="lock-check">
+        <input type="checkbox" ${checked} onchange="toggleLockSelect(${item.user_id}, this.checked)" />
+        <div class="user-line">
+          ${renderAvatar(item)}
+          <div>${renderUserName(item)}</div>
+        </div>
+      </label>
+    </div>`;
       }).join('');
+      updateLockSelectAllState(filtered);
+      updateLockFilterHint(filtered.length, source.length);
     }
 
     function renderLeaderboard(items) {
@@ -2423,34 +2702,154 @@
     // Data Fetching
     // =====================
     async function loadBatches() {
-      const res = await fetch(`${apiBase}/api/admin/award_batches`, { headers: adminHeaders() });
-      const data = await res.json();
-      const list = data.items || [];
+      const [batchRes, roundRes] = await Promise.all([
+        fetch(`${apiBase}/api/admin/award_batches`, { headers: adminHeaders() }),
+        fetch(`${apiBase}/api/admin/rounds?limit=50`, { headers: adminHeaders() })
+      ]);
+      const batchData = await batchRes.json();
+      const roundData = await roundRes.json();
+      const list = batchData.items || [];
+      const rounds = roundData.items || [];
+      const pendingRounds = rounds.filter(item => ['READY_DRAW', 'DRAWING'].includes(item.status));
+      const pendingItems = pendingRounds.map(item => ({
+        id: `round-${item.id}`,
+        round_id: item.id,
+        total_pool: item.total_pool,
+        status: item.status,
+        created_at: item.end_at || item.updated_at || item.created_at,
+        is_round: true
+      }));
+      const merged = [...pendingItems, ...list];
       const el = document.getElementById('batchList');
-      if (!list.length) {
+      if (!merged.length) {
         el.innerHTML = '<div class="note">暂无批次</div>';
         return;
       }
-      el.innerHTML = list.map(item => {
+      el.innerHTML = merged.map(item => {
         const statusLabel = batchStatusLabel(item.status);
         const statusClass = batchStatusClass(item.status);
         const pool = ((item.total_pool || 0) / 100).toFixed(2);
         const createdAt = formatTime(item.created_at);
-        const canConfirm = item.status === 'PENDING_CONFIRM';
+        const isRound = !!item.is_round;
+        const canConfirm = !isRound && item.status === 'PENDING_CONFIRM';
+        const canVoid = !isRound && item.status !== 'CONFIRMED' && item.status !== 'VOID';
+        const canDraw = isRound && item.status === 'READY_DRAW';
+        const title = isRound ? `轮次#${item.round_id}` : `批次#${item.id} · 轮次#${item.round_id}`;
         return `<div class="list-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
       <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-        <div>批次#${item.id} · 轮次#${item.round_id}</div>
+        <div>${title}</div>
         <span class="status-tag ${statusClass}">${statusLabel}</span>
       </div>
       <div class="meta">奖池：${pool} 元 ${createdAt !== '--' ? `| 创建：${createdAt}` : ''}</div>
-      ${canConfirm ? `<button class="btn ghost" onclick="confirmBatch(${item.id})">确认入账</button>` : ''}
+      <div style="display:flex; gap:8px;">
+        ${canDraw ? `<button class="btn primary" onclick="drawRoundById(${item.round_id})">开奖</button>` : ''}
+        ${canConfirm ? `<button class="btn ghost" onclick="confirmBatch(${item.id})">确认入账</button>` : ''}
+        ${canVoid ? `<button class="btn danger" onclick="voidBatch(${item.id})">作废</button>` : ''}
+      </div>
     </div>`;
       }).join('');
     }
 
+    async function loadRoundResults(reset = false) {
+      if (!currentRoundId) {
+        const summary = document.getElementById('roundResultSummary');
+        const list = document.getElementById('roundResultList');
+        if (summary) summary.innerText = '选择历史轮次查看';
+        if (list) list.innerHTML = '<div class="note">暂无数据</div>';
+        return;
+      }
+      if (reset) {
+        roundResultOffset = 0;
+      }
+      const input = document.getElementById('roundResultSearch');
+      const q = input ? input.value.trim() : '';
+      const url = `${apiBase}/api/admin/rounds/${currentRoundId}/results?limit=${roundResultLimit}&offset=${roundResultOffset}&q=${encodeURIComponent(q)}`;
+      try {
+        const res = await fetch(url, { headers: adminHeaders() });
+        const data = await requireOk(res, '加载轮次结果失败');
+        roundResultTotal = data.total || 0;
+        const items = data.items || [];
+        renderRoundResults(items, data);
+      } catch (e) {
+        const summary = document.getElementById('roundResultSummary');
+        const list = document.getElementById('roundResultList');
+        if (summary) summary.innerText = e.message || '加载失败';
+        if (list) list.innerHTML = '<div class="note">加载失败</div>';
+      }
+    }
+
+    function renderRoundResults(items, meta) {
+      const summary = document.getElementById('roundResultSummary');
+      const listEl = document.getElementById('roundResultList');
+      if (!summary || !listEl) return;
+      const scoreSum = meta?.score_sum || 0;
+      const scoreUsers = meta?.score_users || 0;
+      const start = roundResultOffset + 1;
+      const end = roundResultOffset + (items ? items.length : 0);
+      summary.innerText = `轮次 #${currentRoundId} · 总分值 ${scoreSum} · 用户 ${scoreUsers} · 显示 ${start}-${end}`;
+      if (!items || items.length === 0) {
+        listEl.innerHTML = '<div class="note">暂无数据</div>';
+        return;
+      }
+      listEl.innerHTML = items.map(item => {
+        const amount = ((item.amount || 0) / 100).toFixed(2);
+        const baseAmount = ((item.base_amount || 0) / 100).toFixed(2);
+        const luckyAmount = ((item.lucky_amount || 0) / 100).toFixed(2);
+        return `<div class="list-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
+      <div class="user-line">
+        ${renderAvatar(item, 'mini')}
+        <div>#${item.rank} ${renderUserName(item)}</div>
+      </div>
+      <div class="meta">分值：${item.score} · 金额：${amount} 元（基础 ${baseAmount} / 幸运 ${luckyAmount}）</div>
+    </div>`;
+      }).join('');
+    }
+
+    function prevRoundResultPage() {
+      if (roundResultOffset <= 0) return;
+      roundResultOffset = Math.max(0, roundResultOffset - roundResultLimit);
+      loadRoundResults(false);
+    }
+
+    function nextRoundResultPage() {
+      if (roundResultOffset + roundResultLimit >= roundResultTotal) return;
+      roundResultOffset += roundResultLimit;
+      loadRoundResults(false);
+    }
+
     async function confirmBatch(id) {
-      await fetch(`${apiBase}/api/admin/award_batches/${id}/confirm`, { method: 'POST', headers: adminHeaders() });
-      loadBatches();
+      try {
+        const res = await fetch(`${apiBase}/api/admin/award_batches/${id}/confirm`, { method: 'POST', headers: adminHeaders() });
+        await requireOk(res, '确认失败');
+        loadBatches();
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '确认失败');
+      }
+    }
+
+    async function drawRoundById(id) {
+      if (!id) return;
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${id}/draw`, { method: 'POST', headers: adminHeaders() });
+        await requireOk(res, '开奖失败');
+        loadBatches();
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '开奖失败');
+      }
+    }
+
+    async function voidBatch(id) {
+      if (!confirm(`确认作废批次 #${id} 吗？`)) return;
+      try {
+        const res = await fetch(`${apiBase}/api/admin/award_batches/${id}/void`, { method: 'POST', headers: adminHeaders() });
+        await requireOk(res, '作废失败');
+        loadBatches();
+        loadRounds();
+      } catch (e) {
+        alert(e.message || '作废失败');
+      }
     }
 
     async function loadRounds() {
@@ -2465,14 +2864,31 @@
       el.innerHTML = list.map(item => {
         const statusLabel = roundStatusLabel(item.status);
         const statusClass = roundStatusClass(item.status);
+        const canDelete = item.status === 'WAITING' || item.status === 'LOCKED';
         return `<div class="list-item">
       <div>#${item.id} ${escapeHTML(item.title || '红包雨')} <span class="status-tag ${statusClass}">${statusLabel}</span></div>
       <div style="display:flex; gap:8px;">
         <button class="btn ghost" onclick='selectRound(${item.id})'>查看</button>
         <button class="btn ghost" onclick='exportRound(${item.id})'>导出</button>
+        ${canDelete ? `<button class="btn danger" onclick='deleteRound(${item.id})'>删除</button>` : ''}
       </div>
     </div>`;
       }).join('');
+    }
+
+    async function deleteRound(id) {
+      if (!confirm(`确认删除轮次 #${id} 吗？仅允许未开始的轮次删除。`)) return;
+      try {
+        const res = await fetch(`${apiBase}/api/admin/rounds/${id}`, { method: 'DELETE', headers: adminHeaders() });
+        await requireOk(res, '删除失败');
+        if (currentRoundId === id) {
+          currentRoundId = null;
+        }
+        loadRounds();
+        loadBatches();
+      } catch (e) {
+        alert(e.message || '删除失败');
+      }
     }
 
     async function exportRound(id) {
@@ -2680,6 +3096,9 @@
       setFollowCurrent(false);
       await refreshLeaderboard();
       await pollMetrics();
+      const summary = document.getElementById('roundResultSummary');
+      if (summary) summary.innerText = '加载中...';
+      loadRoundResults(true);
     }
 
     async function loadOnlineUsers(containerId = 'onlineUsers') {
@@ -2826,6 +3245,16 @@
     function openLockModal() {
       const modal = document.getElementById('lockModal');
       modal.classList.add('active');
+      lockFilterText = '';
+      lockSelectedIds.clear();
+      const input = document.getElementById('lockFilterInput');
+      if (input) input.value = '';
+      const selectAll = document.getElementById('lockSelectAll');
+      if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+      }
+      updateLockFilterHint(0, onlineUserCache.length);
       loadOnlineUsers('lockOnlineUsers');
     }
 

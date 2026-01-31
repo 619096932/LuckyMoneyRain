@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -26,6 +27,10 @@ func serveEmbedded(path string) gin.HandlerFunc {
 
 func main() {
 	cfg := config.Load()
+	secret := strings.TrimSpace(cfg.GameSignSecret)
+	if secret == "" || secret == "change-me" {
+		log.Fatal("GAME_SIGN_SECRET must be set to a non-default value")
+	}
 	mysql, err := db.NewMySQL(cfg.MySQLDSN)
 	if err != nil {
 		log.Fatalf("mysql error: %v", err)
@@ -70,6 +75,7 @@ func main() {
 		api.GET("/game/state", srv.AuthRequired(), srv.GetGameState)
 		api.POST("/game/click", srv.AuthRequired(), srv.Click)
 		api.GET("/game/result", srv.AuthRequired(), srv.GetResult)
+		api.GET("/game/reveal", srv.AuthRequired(), srv.GetGameReveal)
 
 		remote := api.Group("/remote")
 		remote.POST("/register", srv.RemoteRegister)
@@ -85,12 +91,15 @@ func main() {
 		admin.POST("/rounds/:id/clear", srv.ClearRound)
 		admin.POST("/rounds/:id/start", srv.StartRound)
 		admin.POST("/rounds/:id/draw", srv.DrawRound)
+		admin.DELETE("/rounds/:id", srv.DeleteRound)
+		admin.GET("/rounds/:id/results", srv.GetRoundResults)
 		admin.GET("/rounds/:id/leaderboard", srv.GetLeaderboard)
 		admin.GET("/rounds/:id/export", srv.ExportRound)
 		admin.GET("/online_users", srv.GetOnlineUsers)
 		admin.GET("/metrics", srv.GetMetrics)
 		admin.GET("/award_batches", srv.ListAwardBatches)
 		admin.POST("/award_batches/:id/confirm", srv.ConfirmAward)
+		admin.POST("/award_batches/:id/void", srv.VoidAwardBatch)
 		admin.GET("/withdraw_switch", srv.GetWithdrawSwitch)
 		admin.POST("/withdraw_switch", srv.SetWithdrawSwitch)
 		admin.GET("/withdraws", srv.ListWithdrawsAdmin)
